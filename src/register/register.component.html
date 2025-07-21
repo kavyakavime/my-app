@@ -1,0 +1,84 @@
+<div class="register-container">
+  <header class="header">
+    <div class="nav">
+      <div class="logo">
+        <span class="car-icon">🚗</span>
+        <span class="brand-name">liteRide</span>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn-secondary" (click)="onSignIn()">Sign In</button>
+        <button class="btn-primary" (click)="onCreateAccount()">Create Account</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="hero-section">
+      <h1 class="hero-title">
+        Your Ride is Just<br>
+        <span class="highlight">One Click Away</span>
+      </h1>
+      
+      <p class="hero-subtitle">
+        Fast, reliable, and affordable rides at your fingertips. Get where you need to
+        go with liteRide - your trusted transportation partner.
+      </p>
+
+      <div class="action-buttons">
+        <button class="btn-primary-large" (click)="onBookRide()">Book a Ride</button>
+        <button class="btn-secondary-large" (click)="onCreateAccount()">Create Account</button>
+      </div>
+    </div>
+
+    <div class="driver-section">
+      <h2 class="driver-title">Want to Earn with liteRide?</h2>
+      <p class="driver-subtitle">Join our driver community and start earning on your schedule</p>
+      <button class="btn-outline" (click)="onBecomeDriver()">Become a Driver</button>
+    </div>
+
+    <div class="features-section">
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12,6 12,12 16,14"></polyline>
+          </svg>
+        </div>
+        <h3 class="feature-title">Quick & Easy</h3>
+        <p class="feature-description">
+          Book your ride in seconds with our simple interface
+        </p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+          </svg>
+        </div>
+        <h3 class="feature-title">Safe & Reliable</h3>
+        <p class="feature-description">
+          Verified drivers and real-time tracking for your peace of mind
+        </p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v6m0 6v6"></path>
+            <path d="m21 12-6 0m-6 0-6 0"></path>
+          </svg>
+        </div>
+        <h3 class="feature-title">Affordable Rates</h3>
+        <p class="feature-description">
+          Transparent pricing with no hidden fees or surge charges
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2024 liteRide. All rights reserved.</p>
+  </footer>
+</div>

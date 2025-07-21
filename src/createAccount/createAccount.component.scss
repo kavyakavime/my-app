@@ -1,0 +1,150 @@
+.create-account-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    padding: 20px;
+  }
+  
+  .create-account-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    width: 100%;
+    max-width: 500px;
+  }
+  
+  .header {
+    text-align: center;
+    margin-bottom: 30px;
+  
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+  
+      .car-icon {
+        font-size: 24px;
+        margin-right: 8px;
+      }
+  
+      .logo-text {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+    }
+  
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin: 0 0 8px 0;
+    }
+  
+    .subtitle {
+      color: #6c757d;
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+  
+  .form {
+    .form-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+  
+      @media (max-width: 600px) {
+        flex-direction: column;
+        gap: 20px;
+      }
+    }
+  
+    .form-group {
+      flex: 1;
+  
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color: #333;
+        font-size: 14px;
+      }
+  
+      .form-input,
+      .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e1e5e9;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.2s ease;
+        box-sizing: border-box;
+  
+        &:focus {
+          outline: none;
+          border-color: #007bff;
+          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+  
+        &::placeholder {
+          color: #9ca3af;
+        }
+      }
+  
+      .form-select {
+        cursor: pointer;
+        background-color: white;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 12px center;
+        background-repeat: no-repeat;
+        background-size: 16px;
+        padding-right: 40px;
+      }
+    }
+  
+    .submit-button {
+      width: 100%;
+      background-color: #1e3a8a;
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      margin-top: 10px;
+  
+      &:hover:not(:disabled) {
+        background-color: #1e40af;
+      }
+  
+      &:disabled {
+        background-color: #6b7280;
+        cursor: not-allowed;
+      }
+    }
+  }
+  
+  .sign-in-link {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 14px;
+    color: #6c757d;
+  
+    .link {
+      color: #007bff;
+      text-decoration: none;
+      font-weight: 500;
+  
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }

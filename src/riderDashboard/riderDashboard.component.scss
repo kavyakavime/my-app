@@ -1,0 +1,662 @@
+.dashboard-container {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+  }
+  
+  // Header
+  .header {
+    background: white;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+    .logo {
+      display: flex;
+      align-items: center;
+  
+      .car-icon {
+        font-size: 24px;
+        margin-right: 8px;
+      }
+  
+      .logo-text {
+        font-size: 20px;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+    }
+  
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+  
+      .welcome-text {
+        color: #6c757d;
+        font-size: 14px;
+      }
+  
+      .logout-btn {
+        background: none;
+        border: none;
+        color: #1a1a1a;
+        font-weight: 500;
+        cursor: pointer;
+        font-size: 14px;
+  
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+  
+  // Tab Navigation
+  .tab-navigation {
+    background: white;
+    display: flex;
+    padding: 0 24px;
+    border-bottom: 1px solid #e1e5e9;
+  
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 16px 24px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #6c757d;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+  
+      &:hover {
+        color: #1a1a1a;
+      }
+  
+      &.active {
+        color: #1a1a1a;
+        border-bottom-color: #1e3a8a;
+        background-color: #f8f9fa;
+      }
+    }
+  }
+  
+  // Tab Content
+  .tab-content {
+    padding: 24px;
+  }
+  
+  .content-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  // Book Ride Tab
+  .book-ride-panel {
+    .content-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+  
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
+  
+  .booking-section {
+    background: white;
+    padding: 32px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #1a1a1a;
+    }
+  
+    .subtitle {
+      color: #6c757d;
+      margin: 0 0 24px 0;
+      font-size: 14px;
+    }
+  }
+  
+  .booking-form {
+    .form-group {
+      margin-bottom: 20px;
+  
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color: #333;
+        font-size: 14px;
+      }
+  
+      .form-input,
+      .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #e1e5e9;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.2s ease;
+        box-sizing: border-box;
+  
+        &:focus {
+          outline: none;
+          border-color: #007bff;
+          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+  
+        &::placeholder {
+          color: #9ca3af;
+        }
+      }
+  
+      .form-select {
+        cursor: pointer;
+        background-color: white;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 12px center;
+        background-repeat: no-repeat;
+        background-size: 16px;
+        padding-right: 40px;
+      }
+    }
+  
+    .form-row {
+      display: flex;
+      gap: 16px;
+  
+      @media (max-width: 600px) {
+        flex-direction: column;
+        gap: 0;
+      }
+  
+      .form-group {
+        flex: 1;
+      }
+    }
+  
+    .find-rides-btn {
+      width: 100%;
+      background-color: #1e3a8a;
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+  
+      &:hover:not(:disabled) {
+        background-color: #1e40af;
+      }
+  
+      &:disabled {
+        background-color: #6b7280;
+        cursor: not-allowed;
+      }
+    }
+  }
+  
+  .available-rides-section {
+    background: white;
+    padding: 32px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+    h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #1a1a1a;
+    }
+  
+    .subtitle {
+      color: #6c757d;
+      margin: 0 0 24px 0;
+      font-size: 14px;
+    }
+  }
+  
+  .rides-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .ride-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    transition: box-shadow 0.2s ease;
+  
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+  
+    .driver-info {
+      h4 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+        color: #1a1a1a;
+      }
+  
+      p {
+        color: #6c757d;
+        margin: 0 0 8px 0;
+        font-size: 14px;
+      }
+  
+      .rating {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 14px;
+        color: #6c757d;
+  
+        .star {
+          color: #ffc107;
+        }
+      }
+    }
+  
+    .ride-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+  
+      .price {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+  
+      .book-now-btn {
+        background-color: #1e3a8a;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+  
+        &:hover:not(:disabled) {
+          background-color: #1e40af;
+        }
+  
+        &:disabled {
+          background-color: #6b7280;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+  
+  // Current Ride Tab
+  .current-ride-panel {
+    .content-wrapper {
+      background: white;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #1a1a1a;
+    }
+  
+    .subtitle {
+      color: #6c757d;
+      margin: 0 0 24px 0;
+      font-size: 14px;
+    }
+  }
+  
+  .ride-status {
+    text-align: center;
+    margin-bottom: 32px;
+  
+    .status-badge {
+      background-color: #1e3a8a;
+      color: white;
+      padding: 12px 32px;
+      border-radius: 25px;
+      font-weight: 500;
+      font-size: 16px;
+    }
+  }
+  
+  .ride-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+  
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+      color: #1a1a1a;
+    }
+  }
+  
+  .driver-card {
+    h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      color: #1a1a1a;
+    }
+  
+    p {
+      color: #6c757d;
+      margin: 0 0 8px 0;
+      font-size: 14px;
+    }
+  
+    .rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 14px;
+      color: #6c757d;
+      margin-bottom: 16px;
+  
+      .star {
+        color: #ffc107;
+      }
+    }
+  
+    .driver-actions {
+      display: flex;
+      gap: 12px;
+  
+      .action-btn {
+        flex: 1;
+        padding: 10px 16px;
+        border: 1px solid #e1e5e9;
+        border-radius: 6px;
+        background: white;
+        color: #1a1a1a;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+  
+        &:hover {
+          background-color: #f8f9fa;
+          border-color: #1e3a8a;
+        }
+      }
+    }
+  }
+  
+  .ride-details-card {
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #f1f3f4;
+  
+      &:last-child {
+        border-bottom: none;
+      }
+  
+      .label {
+        color: #6c757d;
+        font-size: 14px;
+      }
+  
+      .value {
+        font-weight: 500;
+        color: #1a1a1a;
+        font-size: 14px;
+      }
+    }
+  }
+  
+  .cancel-btn {
+    width: 100%;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.2s ease;
+  
+    &:hover {
+      background-color: #c82333;
+    }
+  }
+  
+  .live-location-section {
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+      color: #1a1a1a;
+    }
+  
+    .map-placeholder {
+      background-color: #f8f9fa;
+      border: 2px dashed #e1e5e9;
+      border-radius: 8px;
+      padding: 60px 20px;
+      text-align: center;
+      color: #6c757d;
+    }
+  }
+  
+  .no-ride-message {
+    text-align: center;
+    padding: 60px 20px;
+  
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+      color: #1a1a1a;
+    }
+  
+    p {
+      color: #6c757d;
+      margin: 0 0 24px 0;
+      font-size: 16px;
+    }
+  
+    .book-ride-btn {
+      background-color: #1e3a8a;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+  
+      &:hover {
+        background-color: #1e40af;
+      }
+    }
+  }
+  
+  // Ride History Tab
+  .ride-history-panel {
+    .content-wrapper {
+      background: white;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  
+    h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: #1a1a1a;
+    }
+  
+    .subtitle {
+      color: #6c757d;
+      margin: 0 0 24px 0;
+      font-size: 14px;
+    }
+  }
+  
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .history-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border: 1px solid #e1e5e9;
+    border-radius: 8px;
+    transition: box-shadow 0.2s ease;
+  
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+  
+    .ride-route {
+      flex: 1;
+  
+      h4 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+        color: #1a1a1a;
+      }
+  
+      .ride-meta {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 4px;
+        font-size: 14px;
+        color: #6c757d;
+      }
+  
+      .ride-id {
+        font-size: 12px;
+        color: #9ca3af;
+      }
+    }
+  
+    .ride-summary {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+  
+      .price {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+  
+      .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+  
+        &.completed {
+          background-color: #d4edda;
+          color: #155724;
+        }
+  
+        &.cancelled {
+          background-color: #f8d7da;
+          color: #721c24;
+        }
+      }
+  
+      .rating {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: #6c757d;
+  
+        .star {
+          color: #ffc107;
+        }
+      }
+  
+      .view-details-btn {
+        background: none;
+        border: 1px solid #1e3a8a;
+        color: #1e3a8a;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+  
+        &:hover {
+          background-color: #1e3a8a;
+          color: white;
+        }
+      }
+    }
+  }
+  
+  .no-history-message {
+    text-align: center;
+    padding: 60px 20px;
+  
+    p {
+      color: #6c757d;
+      margin: 0 0 24px 0;
+      font-size: 16px;
+    }
+  
+    .book-ride-btn {
+      background-color: #1e3a8a;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+  
+      &:hover {
+        background-color: #1e40af;
+      }
+    }
+  }

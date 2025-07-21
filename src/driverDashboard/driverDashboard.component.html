@@ -1,0 +1,362 @@
+<div class="dashboard-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="car-icon">🚗</span>
+        <span class="logo-text">liteRide</span>
+      </div>
+      <div class="header-right">
+        <div class="availability-toggle">
+          <span class="toggle-label">Available</span>
+          <label class="toggle-switch">
+            <input 
+              type="checkbox" 
+              [checked]="isAvailable"
+              (change)="toggleAvailability()"
+            />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="user-info">
+          <span class="welcome-text">Welcome, {{ currentDriver.name }}</span>
+          <button class="logout-btn" (click)="logout()">Logout</button>
+        </div>
+      </div>
+    </header>
+  
+    <!-- Stats Dashboard -->
+    <section class="stats-section">
+      <div class="stats-grid">
+        <div class="stat-card status-card">
+          <div class="status-badge" [class.available]="isAvailable" [class.offline]="!isAvailable">
+            {{ isAvailable ? 'Available' : 'Offline' }}
+          </div>
+          <div class="stat-label">Status</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ driverStats.rating }}</div>
+          <div class="stat-label">Rating</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ driverStats.totalRides }}</div>
+          <div class="stat-label">Total Rides</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${{ driverStats.monthlyEarnings | number:'1.0-0' }}</div>
+          <div class="stat-label">This Month Earnings</div>
+        </div>
+      </div>
+    </section>
+  
+    <!-- Tab Navigation -->
+    <nav class="tab-navigation">
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'requests'"
+        (click)="setActiveTab('requests')"
+      >
+        Ride Requests
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'current'"
+        (click)="setActiveTab('current')"
+      >
+        Current Ride
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'history'"
+        (click)="setActiveTab('history')"
+      >
+        Ride History
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'profile'"
+        (click)="setActiveTab('profile')"
+      >
+        Profile
+      </button>
+    </nav>
+  
+    <!-- Tab Content -->
+    <main class="tab-content">
+      <!-- Ride Requests Tab -->
+      <div *ngIf="activeTab === 'requests'" class="tab-panel requests-panel">
+        <div class="content-wrapper">
+          <h2>Pending Ride Requests</h2>
+          <p class="subtitle">Accept or decline ride requests from nearby riders</p>
+  
+          <div class="requests-list" *ngIf="pendingRequests.length > 0; else noRequests">
+            <div
+              *ngFor="let request of pendingRequests"
+              class="request-card"
+            >
+              <div class="request-info">
+                <h4>{{ request.riderName }}</h4>
+                <div class="route">{{ request.pickup }} → {{ request.destination }}</div>
+                <div class="request-meta">
+                  <span>{{ request.distance }} • ETA: {{ request.eta }}</span>
+                </div>
+              </div>
+              <div class="request-actions">
+                <span class="fare">${{ request.fare }}</span>
+                <div class="action-buttons">
+                  <button
+                    class="accept-btn"
+                    (click)="acceptRequest(request)"
+                    [disabled]="isProcessing"
+                  >
+                    Accept Ride
+                  </button>
+                  <button
+                    class="decline-btn"
+                    (click)="declineRequest(request)"
+                    [disabled]="isProcessing"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <ng-template #noRequests>
+            <div class="no-requests-message">
+              <p>No pending ride requests at the moment.</p>
+              <div class="availability-reminder" *ngIf="!isAvailable">
+                <p>Make sure you're available to receive ride requests.</p>
+                <button class="go-online-btn" (click)="toggleAvailability()">Go Online</button>
+              </div>
+            </div>
+          </ng-template>
+        </div>
+      </div>
+  
+      <!-- Current Ride Tab -->
+      <div *ngIf="activeTab === 'current'" class="tab-panel current-ride-panel">
+        <div class="content-wrapper">
+          <div *ngIf="currentRide; else noCurrentRide">
+            <h2>Current Ride</h2>
+            <p class="subtitle">Manage your ongoing ride</p>
+  
+            <div class="ride-info-grid">
+              <div class="rider-details-section">
+                <h3>Rider Details</h3>
+                <div class="rider-card">
+                  <h4>{{ currentRide.rider.name }}</h4>
+                  <p>{{ currentRide.rider.phone }}</p>
+                  <p>OTP: <strong>{{ currentRide.otp }}</strong></p>
+                  <div class="rider-actions">
+                    <button class="action-btn secondary" (click)="callRider()">Call Rider</button>
+                    <button class="action-btn secondary" (click)="messageRider()">Message</button>
+                  </div>
+                </div>
+              </div>
+  
+              <div class="trip-details-section">
+                <h3>Trip Details</h3>
+                <div class="trip-details-card">
+                  <div class="detail-row">
+                    <span class="label">Pickup:</span>
+                    <span class="value">{{ currentRide.pickup }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Destination:</span>
+                    <span class="value">{{ currentRide.destination }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Fare:</span>
+                    <span class="value">${{ currentRide.fare }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Status:</span>
+                    <span class="status-badge small">{{ currentRide.status }}</span>
+                  </div>
+                </div>
+                <div class="ride-controls">
+                  <button 
+                    class="complete-btn" 
+                    (click)="completeRide()"
+                    [disabled]="currentRide.status !== 'Rider Picked Up'"
+                  >
+                    Complete Ride
+                  </button>
+                  <div class="secondary-controls">
+                    <button class="nav-btn" (click)="startNavigation()">Start Navigation</button>
+                    <button class="emergency-btn" (click)="emergency()">Emergency</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+  
+            <div class="route-map-section">
+              <h3>Route Map</h3>
+              <div class="map-placeholder">
+                <p>Map integration would go here</p>
+              </div>
+            </div>
+          </div>
+  
+          <ng-template #noCurrentRide>
+            <div class="no-ride-message">
+              <h2>No Current Ride</h2>
+              <p>You don't have any ongoing rides at the moment.</p>
+              <button class="accept-requests-btn" (click)="setActiveTab('requests')">View Ride Requests</button>
+            </div>
+          </ng-template>
+        </div>
+      </div>
+  
+      <!-- Ride History Tab -->
+      <div *ngIf="activeTab === 'history'" class="tab-panel ride-history-panel">
+        <div class="content-wrapper">
+          <h2>Ride History</h2>
+          <p class="subtitle">View your completed rides</p>
+  
+          <div class="history-list" *ngIf="rideHistory.length > 0; else noHistory">
+            <div
+              *ngFor="let ride of rideHistory"
+              class="history-card"
+            >
+              <div class="ride-route">
+                <h4>{{ ride.pickup }} → {{ ride.destination }}</h4>
+                <div class="ride-meta">
+                  <span class="date">{{ ride.date }}</span>
+                  <span class="rider">{{ ride.riderName }}</span>
+                  <span class="duration">{{ ride.duration }}</span>
+                </div>
+                <div class="ride-id">Ride ID: {{ ride.rideId }}</div>
+              </div>
+              <div class="ride-summary">
+                <div class="price">${{ ride.fare }}</div>
+                <div class="rating">
+                  <span class="star">⭐</span>
+                  <span>{{ ride.rating }}/5</span>
+                </div>
+                <button class="view-details-btn" (click)="viewRideDetails(ride)">View Details</button>
+              </div>
+            </div>
+          </div>
+  
+          <ng-template #noHistory>
+            <div class="no-history-message">
+              <p>No ride history available.</p>
+              <button class="start-driving-btn" (click)="setActiveTab('requests')">Start Taking Rides</button>
+            </div>
+          </ng-template>
+        </div>
+      </div>
+  
+      <!-- Profile Tab -->
+      <div *ngIf="activeTab === 'profile'" class="tab-panel profile-panel">
+        <div class="content-wrapper">
+          <div class="profile-grid">
+            <div class="personal-info-section">
+              <h3>Personal Information</h3>
+              <form [formGroup]="profileForm" class="profile-form">
+                <div class="form-group">
+                  <label for="fullName">Full Name</label>
+                  <input
+                    type="text"
+                    id="fullName"
+                    formControlName="fullName"
+                    class="form-input"
+                    readonly
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="currentLocation">Current Location</label>
+                  <input
+                    type="text"
+                    id="currentLocation"
+                    formControlName="currentLocation"
+                    class="form-input"
+                  />
+                </div>
+                <button type="button" class="update-btn" (click)="updateLocation()">
+                  Update Location
+                </button>
+              </form>
+            </div>
+  
+            <div class="vehicle-info-section">
+              <h3>Vehicle Information</h3>
+              <form [formGroup]="vehicleForm" class="vehicle-form">
+                <div class="form-group">
+                  <label for="vehicleType">Vehicle Type</label>
+                  <input
+                    type="text"
+                    id="vehicleType"
+                    formControlName="vehicleType"
+                    class="form-input"
+                    readonly
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="vehicleModel">Vehicle Model</label>
+                  <input
+                    type="text"
+                    id="vehicleModel"
+                    formControlName="vehicleModel"
+                    class="form-input"
+                    readonly
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="numberPlate">Number Plate</label>
+                  <input
+                    type="text"
+                    id="numberPlate"
+                    formControlName="numberPlate"
+                    class="form-input"
+                    readonly
+                  />
+                </div>
+              </form>
+            </div>
+  
+            <div class="document-status-section">
+              <h3>Document Status</h3>
+              <div class="document-list">
+                <div class="document-item">
+                  <span class="document-name">Driving License</span>
+                  <span class="status-badge verified">Verified</span>
+                </div>
+                <div class="document-item">
+                  <span class="document-name">Vehicle Registration</span>
+                  <span class="status-badge verified">Verified</span>
+                </div>
+                <div class="document-item">
+                  <span class="document-name">Insurance</span>
+                  <span class="status-badge verified">Verified</span>
+                </div>
+              </div>
+            </div>
+  
+            <div class="earnings-summary-section">
+              <h3>Earnings Summary</h3>
+              <div class="earnings-list">
+                <div class="earnings-item">
+                  <span class="earnings-label">Today's Earnings</span>
+                  <span class="earnings-value">${{ earningsSummary.today }}</span>
+                </div>
+                <div class="earnings-item">
+                  <span class="earnings-label">This Week</span>
+                  <span class="earnings-value">${{ earningsSummary.thisWeek }}</span>
+                </div>
+                <div class="earnings-item">
+                  <span class="earnings-label">This Month</span>
+                  <span class="earnings-value">${{ earningsSummary.thisMonth }}</span>
+                </div>
+              </div>
+              <button class="view-report-btn" (click)="viewDetailedReport()">
+                View Detailed Report
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>

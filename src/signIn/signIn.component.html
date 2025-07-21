@@ -1,0 +1,79 @@
+<div class="sign-in-container">
+    <div class="sign-in-card">
+      <div class="logo-section">
+        <div class="logo">
+          <span class="car-icon">🚗</span>
+          <span class="logo-text">liteRide</span>
+        </div>
+      </div>
+  
+      <div class="form-section">
+        <h1 class="title">Sign In</h1>
+        <p class="subtitle">Enter your credentials to access your account</p>
+  
+        <form [formGroup]="signInForm" (ngSubmit)="onSubmit()" class="sign-in-form">
+          <div class="form-group">
+            <label for="email" class="form-label">Email</label>
+            <input
+              type="email"
+              id="email"
+              formControlName="email"
+              class="form-input"
+              placeholder="Enter your email"
+              [class.error]="email?.invalid && (email?.dirty || email?.touched)"
+            />
+            <div class="error-message" *ngIf="email?.invalid && (email?.dirty || email?.touched)">
+              <span *ngIf="email?.errors?.['required']">Email is required</span>
+              <span *ngIf="email?.errors?.['email']">Please enter a valid email</span>
+            </div>
+          </div>
+  
+          <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <input
+              type="password"
+              id="password"
+              formControlName="password"
+              class="form-input"
+              placeholder="Enter your password"
+              [class.error]="password?.invalid && (password?.dirty || password?.touched)"
+            />
+            <div class="error-message" *ngIf="password?.invalid && (password?.dirty || password?.touched)">
+              <span *ngIf="password?.errors?.['required']">Password is required</span>
+            </div>
+          </div>
+  
+          <div class="form-group">
+            <label for="userType" class="form-label">I am a</label>
+            <select
+              id="userType"
+              formControlName="userType"
+              class="form-select"
+            >
+              <option value="rider">Rider</option>
+              <option value="driver">Driver</option>
+            </select>
+          </div>
+  
+          <button
+            type="submit"
+            class="sign-in-button"
+            [disabled]="signInForm.invalid || isLoading"
+          >
+            <span *ngIf="!isLoading">Sign In</span>
+            <span *ngIf="isLoading">Signing In...</span>
+          </button>
+        </form>
+  
+        <div class="form-footer">
+          <a href="#" class="forgot-password" (click)="onForgotPassword($event)">
+            Forgot your password?
+          </a>
+          <p class="sign-up-link">
+            Don't have an account?
+            <a href="#" (click)="onSignUp($event)">Sign up</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
