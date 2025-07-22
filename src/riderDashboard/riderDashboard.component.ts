@@ -2,7 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
 
 interface User {
   id: string;
@@ -49,10 +50,17 @@ interface RideHistory {
   rating?: number;
 }
 
+interface LocationSuggestion {
+  display_name: string;
+  lat: string;
+  lon: string;
+  place_id: string;
+}
+
 @Component({
   selector: 'app-rider-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, HttpClientModule],
   templateUrl: './riderDashboard.component.html',
   styleUrls: ['./riderDashboard.component.scss']
 })
@@ -63,6 +71,21 @@ export class RiderDashboardComponent implements OnInit {
   // State variables
   isSearching = false;
   isBooking = false;
+  
+  // Location autocomplete variables
+  pickupSuggestions: LocationSuggestion[] = [];
+  destinationSuggestions: LocationSuggestion[] = [];
+  showPickupSuggestions = false;
+  showDestinationSuggestions = false;
+  isLoadingPickupSuggestions = false;
+  isLoadingDestinationSuggestions = false;
+  
+  // Selected locations
+  selectedPickupLocation: LocationSuggestion | null = null;
+  selectedDestinationLocation: LocationSuggestion | null = null;
+  
+  private readonly LOCATIONIQ_API_KEY = 'pk.33a6b675d1b70adc3f79b26403bad615';
+  private readonly LOCATIONIQ_BASE_URL = 'https://api.locationiq.com/v1/autocomplete';
   
   // Data
   currentUser: User = {
@@ -77,7 +100,8 @@ export class RiderDashboardComponent implements OnInit {
 
   constructor(
     private formBuilder: FormBuilder,
-    private router: Router
+    private router: Router,
+    private http: HttpClient
   ) {
     this.bookingForm = this.formBuilder.group({
       pickupLocation: ['', Validators.required],
@@ -91,6 +115,193 @@ export class RiderDashboardComponent implements OnInit {
     this.loadMockData();
     this.loadCurrentRide();
     this.loadRideHistory();
+    this.setupLocationAutocomplete();
+  }
+
+  /**
+   * Setup location autocomplete functionality
+   */
+  private setupLocationAutocomplete(): void {
+    // Pickup location autocomplete
+    this.bookingForm.get('pickupLocation')?.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(query => {
+        if (!query || query.length < 3) {
+          this.pickupSuggestions = [];
+          this.showPickupSuggestions = false;
+          return of([]);
+        }
+        
+        // Don't search if user has selected a suggestion
+        if (this.selectedPickupLocation && query === this.selectedPickupLocation.display_name) {
+          return of([]);
+        }
+        
+        this.isLoadingPickupSuggestions = true;
+        return this.searchLocations(query);
+      }),
+      catchError(error => {
+        console.error('Error searching pickup locations:', error);
+        this.isLoadingPickupSuggestions = false;
+        return of([]);
+      })
+    ).subscribe(suggestions => {
+      this.pickupSuggestions = suggestions;
+      this.showPickupSuggestions = suggestions.length > 0;
+      this.isLoadingPickupSuggestions = false;
+    });
+
+    // Destination autocomplete
+    this.bookingForm.get('destination')?.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(query => {
+        if (!query || query.length < 3) {
+          this.destinationSuggestions = [];
+          this.showDestinationSuggestions = false;
+          return of([]);
+        }
+        
+        // Don't search if user has selected a suggestion
+        if (this.selectedDestinationLocation && query === this.selectedDestinationLocation.display_name) {
+          return of([]);
+        }
+        
+        this.isLoadingDestinationSuggestions = true;
+        return this.searchLocations(query);
+      }),
+      catchError(error => {
+        console.error('Error searching destination locations:', error);
+        this.isLoadingDestinationSuggestions = false;
+        return of([]);
+      })
+    ).subscribe(suggestions => {
+      this.destinationSuggestions = suggestions;
+      this.showDestinationSuggestions = suggestions.length > 0;
+      this.isLoadingDestinationSuggestions = false;
+    });
+  }
+
+  /**
+   * Search locations using LocationIQ API
+   */
+  private searchLocations(query: string) {
+    const encodedQuery = encodeURIComponent(query);
+    const url = `${this.LOCATIONIQ_BASE_URL}?key=${this.LOCATIONIQ_API_KEY}&q=${encodedQuery}&limit=5&format=json`;
+    
+    return this.http.get<LocationSuggestion[]>(url).pipe(
+      catchError(error => {
+        console.error('LocationIQ API error:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Select pickup location from suggestions
+   */
+  selectPickupLocation(suggestion: LocationSuggestion): void {
+    this.selectedPickupLocation = suggestion;
+    this.bookingForm.get('pickupLocation')?.setValue(suggestion.display_name);
+    this.showPickupSuggestions = false;
+    this.pickupSuggestions = [];
+  }
+
+  /**
+   * Select destination location from suggestions
+   */
+  selectDestinationLocation(suggestion: LocationSuggestion): void {
+    this.selectedDestinationLocation = suggestion;
+    this.bookingForm.get('destination')?.setValue(suggestion.display_name);
+    this.showDestinationSuggestions = false;
+    this.destinationSuggestions = [];
+  }
+
+  /**
+   * Handle input focus for pickup
+   */
+  onPickupInputFocus(): void {
+    const query = this.bookingForm.get('pickupLocation')?.value;
+    if (query && query.length >= 3 && this.pickupSuggestions.length > 0) {
+      this.showPickupSuggestions = true;
+    }
+  }
+
+  /**
+   * Handle input focus for destination
+   */
+  onDestinationInputFocus(): void {
+    const query = this.bookingForm.get('destination')?.value;
+    if (query && query.length >= 3 && this.destinationSuggestions.length > 0) {
+      this.showDestinationSuggestions = true;
+    }
+  }
+
+  /**
+   * Hide pickup suggestions when clicking outside
+   */
+  hidePickupSuggestions(): void {
+    // Use setTimeout to allow click events on suggestions to fire first
+    setTimeout(() => {
+      this.showPickupSuggestions = false;
+    }, 200);
+  }
+
+  /**
+   * Hide destination suggestions when clicking outside
+   */
+  hideDestinationSuggestions(): void {
+    // Use setTimeout to allow click events on suggestions to fire first
+    setTimeout(() => {
+      this.showDestinationSuggestions = false;
+    }, 200);
+  }
+
+  /**
+   * Handle Enter key press in input fields
+   */
+  onInputKeydown(event: KeyboardEvent, type: 'pickup' | 'destination'): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      
+      const suggestions = type === 'pickup' ? this.pickupSuggestions : this.destinationSuggestions;
+      if (suggestions.length > 0) {
+        // Select the first suggestion
+        if (type === 'pickup') {
+          this.selectPickupLocation(suggestions[0]);
+        } else {
+          this.selectDestinationLocation(suggestions[0]);
+        }
+      }
+    } else if (event.key === 'Escape') {
+      // Hide suggestions on Escape
+      if (type === 'pickup') {
+        this.showPickupSuggestions = false;
+      } else {
+        this.showDestinationSuggestions = false;
+      }
+    }
+  }
+
+  /**
+   * Clear pickup location
+   */
+  clearPickupLocation(): void {
+    this.selectedPickupLocation = null;
+    this.bookingForm.get('pickupLocation')?.setValue('');
+    this.pickupSuggestions = [];
+    this.showPickupSuggestions = false;
+  }
+
+  /**
+   * Clear destination location
+   */
+  clearDestinationLocation(): void {
+    this.selectedDestinationLocation = null;
+    this.bookingForm.get('destination')?.setValue('');
+    this.destinationSuggestions = [];
+    this.showDestinationSuggestions = false;
   }
 
   /**
@@ -202,6 +413,12 @@ export class RiderDashboardComponent implements OnInit {
       return;
     }
 
+    // Ensure both locations are selected
+    if (!this.selectedPickupLocation || !this.selectedDestinationLocation) {
+      alert('Please select valid pickup and destination locations from the suggestions.');
+      return;
+    }
+
     this.isSearching = true;
 
     // Simulate API call
@@ -209,6 +426,8 @@ export class RiderDashboardComponent implements OnInit {
       this.isSearching = false;
       // Mock data is already loaded
       console.log('Rides found:', this.availableRides);
+      console.log('Pickup coordinates:', this.selectedPickupLocation?.lat, this.selectedPickupLocation?.lon);
+      console.log('Destination coordinates:', this.selectedDestinationLocation?.lat, this.selectedDestinationLocation?.lon);
     }, 2000);
   }
 
@@ -241,15 +460,16 @@ export class RiderDashboardComponent implements OnInit {
         },
         eta: ride.eta,
         fare: ride.price,
-        pickup: this.bookingForm.get('pickupLocation')?.value || '',
-        destination: this.bookingForm.get('destination')?.value || ''
+        pickup: this.selectedPickupLocation?.display_name || '',
+        destination: this.selectedDestinationLocation?.display_name || ''
       };
 
       // Switch to current ride tab
       this.setActiveTab('current');
       
-      // Clear available rides
+      // Clear available rides and reset form
       this.availableRides = [];
+      this.resetBookingForm();
       
       alert('Ride booked successfully!');
     }, 1500);
@@ -319,7 +539,7 @@ export class RiderDashboardComponent implements OnInit {
       localStorage.removeItem('userToken');
       
       // Navigate to login page
-      this.router.navigate(['/register']);
+      this.router.navigate(['/signin']);
     }
   }
 
@@ -334,13 +554,19 @@ export class RiderDashboardComponent implements OnInit {
       when: 'now'
     });
     this.availableRides = [];
+    this.selectedPickupLocation = null;
+    this.selectedDestinationLocation = null;
+    this.pickupSuggestions = [];
+    this.destinationSuggestions = [];
+    this.showPickupSuggestions = false;
+    this.showDestinationSuggestions = false;
   }
 
   /**
    * Check if booking form is valid
    */
   get isBookingFormValid(): boolean {
-    return this.bookingForm.valid;
+    return this.bookingForm.valid && this.selectedPickupLocation !== null && this.selectedDestinationLocation !== null;
   }
 
   /**

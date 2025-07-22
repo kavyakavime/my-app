@@ -65,7 +65,7 @@ export class CreateAccountComponent implements OnInit {
       // Remove confirmPassword from the data to be sent
       const { confirmPassword, ...accountData } = formData;
       
-      console.log('Creating account with data:', accountData);
+      //console.log('Creating account with data:', accountData);
       
       // Here you would typically call your authentication service
       // this.authService.createAccount(accountData).subscribe({
@@ -80,7 +80,7 @@ export class CreateAccountComponent implements OnInit {
       // });
 
       // For now, just log and navigate
-      alert('Account created successfully and !');
+      //alert('Account created successfully and !');
 
       this.router.navigate(['/rider-dashboard']);
     } else {
