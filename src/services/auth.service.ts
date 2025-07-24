@@ -1,4 +1,4 @@
-// src/services/auth.service.ts
+// src/app/services/auth.service.ts (in your Angular project)
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
@@ -29,12 +29,11 @@ export interface User {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:3000/api';
+  private apiUrl = 'http://localhost:3000/api'; // Points to your backend
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {
-    // Check if user is logged in on service initialization
     this.loadStoredUser();
   }
 
@@ -46,8 +45,8 @@ export class AuthService {
     }
   }
 
-  register(userData: RegisterData): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/register`, userData).pipe(
+  login(credentials: SignInCredentials): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/login`, credentials).pipe(
       tap((response: any) => {
         if (response.token) {
           this.setTokenAndUser(response.token, response.user);
@@ -56,8 +55,8 @@ export class AuthService {
     );
   }
 
-  login(credentials: SignInCredentials): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/login`, credentials).pipe(
+  register(userData: RegisterData): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/register`, userData).pipe(
       tap((response: any) => {
         if (response.token) {
           this.setTokenAndUser(response.token, response.user);
@@ -110,7 +109,7 @@ export class AuthService {
     return user ? user.userType : null;
   }
 
-  private getAuthHeaders(): HttpHeaders {
+  getAuthHeaders(): HttpHeaders {
     const token = this.getToken();
     return new HttpHeaders({
       'Authorization': `Bearer ${token}`,
@@ -118,7 +117,6 @@ export class AuthService {
     });
   }
 
-  // HTTP interceptor method for components to use
   getAuthHttpOptions(): { headers: HttpHeaders } {
     return { headers: this.getAuthHeaders() };
   }

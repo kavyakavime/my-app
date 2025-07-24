@@ -533,14 +533,15 @@ export class RiderDashboardComponent implements OnInit {
    * Logout user
    */
   logout(): void {
-    const confirmLogout = confirm('Are you sure you want to logout?');
-    if (confirmLogout) {
+    // May need to add a confirm
+    localStorage.removeItem('userToken');
+    this.router.navigate(['/register']);
+    //const confirmLogout = confirm('Are you sure you want to logout?');
+    //if (confirmLogout) {
       // Clear any stored data
-      localStorage.removeItem('userToken');
       
       // Navigate to login page
-      this.router.navigate(['/signin']);
-    }
+    //this.router.navigate(['/signin']);
   }
 
   /**

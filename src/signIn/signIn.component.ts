@@ -2,28 +2,44 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { AuthService, SignInCredentials } from '../services/auth.service';
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { HttpClientModule } from '@angular/common/http';
 
-
-export interface SignInCredentials {
+interface User {
+  id: number;
   email: string;
-  password: string;
-  userType: 'rider' | 'driver';
+  full_name: string;
+  phone_number: string;
+  user_type: string;
+  is_verified: boolean;
+  is_active: boolean;
+  created_at: string;
+  last_login: string;
+}
+
+interface ApiResponse {
+  message: string;
+  data: User;
 }
 
 @Component({
     selector: 'app-sign-in',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule], // ✅ Add ReactiveFormsModule
+    imports: [CommonModule, ReactiveFormsModule, HttpClientModule], 
     templateUrl: './signIn.component.html',
     styleUrls: ['./signIn.component.scss']
   })
 export class SignInComponent implements OnInit {
   signInForm: FormGroup;
   isLoading = false;
+  private API_URL = 'http://localhost:3000/api';
 
   constructor(
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private http: HttpClient
   ) {
     this.signInForm = this.createForm();
   }
@@ -71,29 +87,44 @@ export class SignInComponent implements OnInit {
     }
   }
 
-  private performSignIn(credentials: SignInCredentials): void {
-    // TODO: Replace with actual authentication service call
-    console.log('Sign in attempt with:', credentials);
-    
-    // Simulate API delay
-    setTimeout(() => {
+  private async performSignIn(credentials: SignInCredentials): Promise<void> {
+    try {
+      const isAuthenticated = await this.mockAuthentication(credentials);
       this.isLoading = false;
       
-      // TODO: Handle actual authentication logic
-      // Example success scenario:
-      if (this.mockAuthentication(credentials)) {
+      if (isAuthenticated) {
         console.log('Authentication successful');
         this.handleSuccessfulSignIn(credentials);
       } else {
         console.log('Authentication failed');
         this.handleSignInError();
       }
-    }, 2000);
+    } catch (error) {
+      this.isLoading = false;
+      console.error('Authentication error:', error);
+      this.handleSignInError();
+    }
   }
 
-  private mockAuthentication(credentials: SignInCredentials): boolean {
-    // Mock authentication - replace with real service
-    return credentials.email === 'test@example.com' && credentials.password === 'password123';
+  private async mockAuthentication(credentials: SignInCredentials): Promise<boolean> {
+    try {
+      const response = await this.http.get<ApiResponse>(`http://localhost:3000/api/auth/users/email/${credentials.email}`).toPromise();
+      const userData: User = response!.data;
+      
+      console.log('Fetched user data:', userData);
+      
+      // Check if user exists and credentials match
+      if (userData && userData.email === credentials.email) {
+        // In a real app, you'd verify the password hash here
+        // For now, we'll accept any password for existing users
+        return userData.is_active && userData.is_verified;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return false;
+    }
   }
 
   private handleSuccessfulSignIn(credentials: SignInCredentials): void {
