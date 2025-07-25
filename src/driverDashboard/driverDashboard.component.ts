@@ -1,46 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-
-
-interface Driver {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-}
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { Subscription, interval } from 'rxjs';
+import { DriverService, Driver, RideData, RideRequest, CurrentRide } from '../services/driver.service';
 
 interface DriverStats {
   rating: number;
   totalRides: number;
   monthlyEarnings: number;
-}
-
-interface RideRequest {
-  id: string;
-  riderName: string;
-  pickup: string;
-  destination: string;
-  distance: string;
-  eta: string;
-  fare: number;
-}
-
-interface Rider {
-  id: string;
-  name: string;
-  phone: string;
-}
-
-interface CurrentRide {
-  rideId: string;
-  rider: Rider;
-  pickup: string;
-  destination: string;
-  fare: number;
-  status: string;
-  otp: string;
 }
 
 interface RideHistory {
@@ -52,6 +21,7 @@ interface RideHistory {
   duration: string;
   fare: number;
   rating: number;
+  status: string;
 }
 
 interface EarningsSummary {
@@ -63,30 +33,26 @@ interface EarningsSummary {
 @Component({
   selector: 'app-driver-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule], 
+  imports: [CommonModule, ReactiveFormsModule, HttpClientModule], 
   templateUrl: './driverDashboard.component.html',
   styleUrls: ['./driverDashboard.component.scss']
 })
-export class DriverDashboardComponent implements OnInit {
+export class DriverDashboardComponent implements OnInit, OnDestroy {
   activeTab: 'requests' | 'current' | 'history' | 'profile' = 'requests';
   isAvailable = true;
   isProcessing = false;
+  isLoading = true;
+  errorMessage = '';
   
   profileForm: FormGroup;
   vehicleForm: FormGroup;
 
   // Data
-  currentDriver: Driver = {
-    id: 'driver1',
-    name: 'Rajesh Kumar',
-    email: 'rajesh@example.com',
-    phone: '+91 98765 43210'
-  };
-
+  currentDriver: Driver | null = null;
   driverStats: DriverStats = {
-    rating: 4.8,
-    totalRides: 1247,
-    monthlyEarnings: 2346
+    rating: 0,
+    totalRides: 0,
+    monthlyEarnings: 0
   };
 
   pendingRequests: RideRequest[] = [];
@@ -94,14 +60,19 @@ export class DriverDashboardComponent implements OnInit {
   rideHistory: RideHistory[] = [];
   
   earningsSummary: EarningsSummary = {
-    today: 128,
-    thisWeek: 845,
-    thisMonth: 2346
+    today: 0,
+    thisWeek: 0,
+    thisMonth: 0
   };
+
+  private subscriptions: Subscription[] = [];
+  private pollingSubscription: Subscription | null = null;
 
   constructor(
     private formBuilder: FormBuilder,
-    private router: Router
+    private router: Router,
+    private http: HttpClient,
+    private driverService: DriverService
   ) {
     this.profileForm = this.formBuilder.group({
       fullName: [{ value: '', disabled: true }],
@@ -116,109 +87,200 @@ export class DriverDashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadMockData();
-    this.loadCurrentRide();
-    this.loadRideHistory();
-    this.initializeForms();
+    this.loadDriverData();
+    this.startPolling();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+    }
   }
 
   /**
-   * mock data
+   * Load driver data from backend
    */
-  private loadMockData(): void {
-    this.pendingRequests = [
-      {
-        id: 'req1',
-        riderName: 'Alex Smith',
-        pickup: 'Bandra West',
-        destination: 'Andheri East',
-        distance: '8.5 km',
-        eta: '12 mins',
-        fare: 18
+  private loadDriverData(): void {
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      this.router.navigate(['/sign-in']);
+      return;
+    }
+
+    this.isLoading = true;
+    
+    const driverSub = this.driverService.getDriverByEmail(userEmail).subscribe({
+      next: (response) => {
+        if (response.data) {
+          this.currentDriver = response.data;
+          this.isAvailable = !!response.data.is_available;
+          this.updateDriverStats();
+          this.initializeForms();
+          this.loadDriverRides();
+          this.loadCurrentRide();
+          this.loadEarnings();
+        }
+        this.isLoading = false;
       },
-      {
-        id: 'req2',
-        riderName: 'Priya Sharma',
-        pickup: 'Powai',
-        destination: 'BKC',
-        distance: '6.2 km',
-        eta: '8 mins',
-        fare: 15
+      error: (error) => {
+        console.error('Error loading driver data:', error);
+        this.errorMessage = 'Failed to load driver data';
+        this.isLoading = false;
       }
-    ];
+    });
+
+    this.subscriptions.push(driverSub);
+    alert("IN driverSUB");
   }
 
   /**
-   * Load current ride mock data
+   * Update driver stats from loaded data
+   */
+  private updateDriverStats(): void {
+    if (this.currentDriver) {
+      this.driverStats = {
+        rating: parseFloat(this.currentDriver.rating) || 0,
+        totalRides: this.currentDriver.total_rides || 0,
+        monthlyEarnings: parseFloat(this.currentDriver.total_earnings) || 0
+      };
+    }
+  }
+
+  /**
+   * Load driver rides from backend
+   */
+  private loadDriverRides(): void {
+    if (!this.currentDriver) return;
+
+    const ridesSub = this.driverService.getDriverRides(this.currentDriver.id).subscribe({
+      next: (response) => {
+        if (response.data) {
+          this.rideHistory = response.data.map(ride => ({
+            rideId: ride.ride_id,
+            pickup: ride.pickup_location,
+            destination: ride.destination,
+            date: ride.completed_at || ride.created_at,
+            riderName: ride.rider_name,
+            duration: this.calculateDuration(ride.created_at, ride.completed_at),
+            fare: parseFloat(ride.final_fare || ride.estimated_fare) || 0,
+            rating: 5, // Default rating - you might want to fetch actual ratings
+            status: ride.status
+          }));
+        }
+      },
+      error: (error) => {
+        console.error('Error loading driver rides:', error);
+      }
+    });
+
+    this.subscriptions.push(ridesSub);
+  }
+
+  /**
+   * Load current ride from backend
    */
   private loadCurrentRide(): void {
-    this.currentRide = {
-      rideId: 'R001',
-      rider: {
-        id: 'rider1',
-        name: 'John Doe',
-        phone: '+91 98765 43210'
+    const currentRideSub = this.driverService.getCurrentRide().subscribe({
+      next: (response) => {
+        this.currentRide = response.currentRide || null;
+        if (this.currentRide) {
+          this.setActiveTab('current');
+        }
       },
-      pickup: 'Worli',
-      destination: 'Marine Drive',
-      fare: 12,
-      status: 'Rider Picked Up',
-      otp: '1234'
-    };
+      error: (error) => {
+        console.error('Error loading current ride:', error);
+        this.currentRide = null;
+      }
+    });
+
+    this.subscriptions.push(currentRideSub);
   }
 
   /**
-   * Loading ride history data
+   * Load earnings from backend
    */
-  private loadRideHistory(): void {
-    this.rideHistory = [
-      {
-        rideId: 'R001',
-        pickup: 'Bandra',
-        destination: 'Andheri',
-        date: '2024-01-15',
-        riderName: 'Alex Smith',
-        duration: '25 mins',
-        fare: 18,
-        rating: 5
+  private loadEarnings(): void {
+    const earningsSub = this.driverService.getEarnings().subscribe({
+      next: (response) => {
+        if (response.earnings) {
+          this.earningsSummary = {
+            today: response.earnings.today || 0,
+            thisWeek: response.earnings.thisWeek || 0,
+            thisMonth: response.earnings.thisMonth || 0
+          };
+        }
       },
-      {
-        rideId: 'R002',
-        pickup: 'Powai',
-        destination: 'BKC',
-        date: '2024-01-15',
-        riderName: 'Priya Sharma',
-        duration: '18 mins',
-        fare: 15,
-        rating: 4
-      },
-      {
-        rideId: 'R003',
-        pickup: 'Colaba',
-        destination: 'CST',
-        date: '2024-01-14',
-        riderName: 'Rohit Patel',
-        duration: '15 mins',
-        fare: 9,
-        rating: 5
+      error: (error) => {
+        console.error('Error loading earnings:', error);
       }
-    ];
+    });
+
+    this.subscriptions.push(earningsSub);
+  }
+
+  /**
+   * Load pending ride requests. moved from private.
+   */
+  loadPendingRequests(): void {
+    const requestsSub = this.driverService.getPendingRideRequests().subscribe({
+      next: (response) => {
+        this.pendingRequests = response.requests || [];
+      },
+      error: (error) => {
+        console.error('Error loading pending requests:', error);
+        this.pendingRequests = [];
+      }
+    });
+
+    this.subscriptions.push(requestsSub);
+  }
+
+  /**
+   * Start polling for updates
+   */
+  private startPolling(): void {
+    // Poll every 30 seconds for pending requests and current ride
+    this.pollingSubscription = interval(30000).subscribe(() => {
+      if (this.isAvailable && this.activeTab === 'requests') {
+        this.loadPendingRequests();
+      }
+      if (this.activeTab === 'current') {
+        this.loadCurrentRide();
+      }
+    });
   }
 
   /**
    * Initialize forms with driver data
    */
   private initializeForms(): void {
-    this.profileForm.patchValue({
-      fullName: this.currentDriver.name,
-      currentLocation: 'Bandra West, Mumbai'
-    });
+    if (this.currentDriver) {
+      this.profileForm.patchValue({
+        fullName: this.currentDriver.full_name,
+        currentLocation: this.currentDriver.current_location_address || ''
+      });
 
-    this.vehicleForm.patchValue({
-      vehicleType: 'Car',
-      vehicleModel: 'Honda City',
-      numberPlate: 'MH 01 AB 1234'
-    });
+      this.vehicleForm.patchValue({
+        vehicleType: this.currentDriver.vehicle_type || 'Car',
+        vehicleModel: `${this.currentDriver.make || ''} ${this.currentDriver.model || ''}`.trim(),
+        numberPlate: this.currentDriver.plate_number || ''
+      });
+    }
+  }
+
+  /**
+   * Calculate duration between two dates
+   */
+  private calculateDuration(startDate: string, endDate?: string): string {
+    if (!endDate) return 'N/A';
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffMs = end.getTime() - start.getTime();
+    const diffMins = Math.round(diffMs / (1000 * 60));
+    
+    return `${diffMins} mins`;
   }
 
   /**
@@ -226,117 +288,132 @@ export class DriverDashboardComponent implements OnInit {
    */
   setActiveTab(tab: 'requests' | 'current' | 'history' | 'profile'): void {
     this.activeTab = tab;
+    
+    // Load data based on active tab
+    if (tab === 'requests') {
+      this.loadPendingRequests();
+    } else if (tab === 'current') {
+      this.loadCurrentRide();
+    } else if (tab === 'history') {
+      this.loadDriverRides();
+    }
   }
 
   /**
    * Toggle driver availability
    */
   toggleAvailability(): void {
-    console.log('Driver availability changed to:', this.isAvailable);
-    
-    if (!this.isAvailable) {
-      // Clear pending requests when going offline
-      this.pendingRequests = [];
-    } else {
-      // Reload requests when going online
-      this.loadMockData();
-    }
+    const toggleSub = this.driverService.toggleAvailability(this.isAvailable).subscribe({
+      next: (response) => {
+        console.log('Availability updated:', response.message);
+        if (!this.isAvailable) {
+          this.pendingRequests = [];
+        } else {
+          this.loadPendingRequests();
+        }
+      },
+      error: (error) => {
+        console.error('Error updating availability:', error);
+        // Revert the toggle on error
+        this.isAvailable = !this.isAvailable;
+      }
+    });
+
+    this.subscriptions.push(toggleSub);
   }
 
   /**
    * Accept ride request
    */
   acceptRequest(request: RideRequest): void {
-    if (this.isProcessing) {
-      return;
-    }
+    if (this.isProcessing) return;
 
     this.isProcessing = true;
     
-    console.log('Accepting ride request:', request);
-    
-    // Simulate API call
-    setTimeout(() => {
-      this.isProcessing = false;
-      
-      // Create current ride from accepted request
-      this.currentRide = {
-        rideId: `R${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-        rider: {
-          id: request.id,
-          name: request.riderName,
-          phone: '+91 98765 43210'
-        },
-        pickup: request.pickup,
-        destination: request.destination,
-        fare: request.fare,
-        status: 'Rider Picked Up',
-        otp: Math.floor(1000 + Math.random() * 9000).toString()
-      };
+    const acceptSub = this.driverService.acceptRideRequest(request.requestId).subscribe({
+      next: (response) => {
+        this.isProcessing = false;
+        this.pendingRequests = this.pendingRequests.filter(req => req.requestId !== request.requestId);
+        this.loadCurrentRide();
+        this.setActiveTab('current');
+        alert('Ride request accepted successfully!');
+      },
+      error: (error) => {
+        this.isProcessing = false;
+        console.error('Error accepting ride request:', error);
+        alert('Failed to accept ride request. Please try again.');
+      }
+    });
 
-      // Remove request from pending list
-      this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
-      
-      // Switch to current ride tab
-      this.setActiveTab('current');
-      
-      alert('Ride request accepted successfully!');
-    }, 1500);
+    this.subscriptions.push(acceptSub);
   }
 
   /**
    * Decline ride request
    */
   declineRequest(request: RideRequest): void {
-    if (this.isProcessing) {
-      return;
-    }
+    if (this.isProcessing) return;
 
     this.isProcessing = true;
     
-    console.log('Declining ride request:', request);
-    
-    // Simulate API call
-    setTimeout(() => {
-      this.isProcessing = false;
-      
-      // Remove request from pending list
-      this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
-      
-      alert('Ride request declined.');
-    }, 500);
+    const declineSub = this.driverService.declineRideRequest(request.requestId).subscribe({
+      next: (response) => {
+        this.isProcessing = false;
+        this.pendingRequests = this.pendingRequests.filter(req => req.requestId !== request.requestId);
+        alert('Ride request declined.');
+      },
+      error: (error) => {
+        this.isProcessing = false;
+        console.error('Error declining ride request:', error);
+        alert('Failed to decline ride request.');
+      }
+    });
+
+    this.subscriptions.push(declineSub);
   }
 
   /**
    * Complete current ride
    */
   completeRide(): void {
-    if (!this.currentRide || this.currentRide.status !== 'Rider Picked Up') {
-      return;
-    }
+    if (!this.currentRide) return;
 
     const confirmComplete = confirm('Are you sure you want to complete this ride?');
     if (confirmComplete) {
-      // Add to history
-      this.rideHistory.unshift({
-        rideId: this.currentRide.rideId,
-        pickup: this.currentRide.pickup,
-        destination: this.currentRide.destination,
-        date: new Date().toISOString().split('T')[0],
-        riderName: this.currentRide.rider.name,
-        duration: '20 mins',
-        fare: this.currentRide.fare,
-        rating: 5
+      const completeSub = this.driverService.completeRide().subscribe({
+        next: (response) => {
+          this.currentRide = null;
+          this.loadDriverRides();
+          this.loadEarnings();
+          this.loadDriverData(); // Reload to update stats
+          alert('Ride completed successfully!');
+        },
+        error: (error) => {
+          console.error('Error completing ride:', error);
+          alert('Failed to complete ride. Please try again.');
+        }
       });
 
-      // Update earnings
-      this.earningsSummary.today += this.currentRide.fare;
-      this.driverStats.totalRides += 1;
-      this.driverStats.monthlyEarnings += this.currentRide.fare;
-
-      this.currentRide = null;
-      alert('Ride completed successfully!');
+      this.subscriptions.push(completeSub);
     }
+  }
+
+  /**
+   * Update ride status
+   */
+  updateRideStatus(status: string): void {
+    const updateSub = this.driverService.updateRideStatus(status).subscribe({
+      next: (response) => {
+        this.loadCurrentRide();
+        alert('Ride status updated successfully!');
+      },
+      error: (error) => {
+        console.error('Error updating ride status:', error);
+        alert('Failed to update ride status.');
+      }
+    });
+
+    this.subscriptions.push(updateSub);
   }
 
   /**
@@ -345,7 +422,7 @@ export class DriverDashboardComponent implements OnInit {
   callRider(): void {
     if (this.currentRide) {
       alert(`Calling ${this.currentRide.rider.name}...`);
-      // idk how we would do this
+      // In a real app, this would initiate a phone call
     }
   }
 
@@ -355,7 +432,7 @@ export class DriverDashboardComponent implements OnInit {
   messageRider(): void {
     if (this.currentRide) {
       alert(`Opening chat with ${this.currentRide.rider.name}...`);
-      // message functionality
+      // In a real app, this would open a messaging interface
     }
   }
 
@@ -365,7 +442,7 @@ export class DriverDashboardComponent implements OnInit {
   startNavigation(): void {
     if (this.currentRide) {
       alert(`Starting navigation to ${this.currentRide.destination}...`);
-      // integrate with maps
+      // In a real app, this would integrate with maps
     }
   }
 
@@ -391,9 +468,20 @@ export class DriverDashboardComponent implements OnInit {
   updateLocation(): void {
     const newLocation = this.profileForm.get('currentLocation')?.value;
     if (newLocation && newLocation.trim()) {
-      console.log('Updating location to:', newLocation);
-      alert('Location updated successfully!');
-      // Here you would call location update API
+      const updateSub = this.driverService.updateLocation(0, 0, newLocation).subscribe({
+        next: (response) => {
+          alert('Location updated successfully!');
+          if (this.currentDriver) {
+            this.currentDriver.current_location_address = newLocation;
+          }
+        },
+        error: (error) => {
+          console.error('Error updating location:', error);
+          alert('Failed to update location. Please try again.');
+        }
+      });
+
+      this.subscriptions.push(updateSub);
     } else {
       alert('Please enter a valid location.');
     }
@@ -414,11 +502,43 @@ export class DriverDashboardComponent implements OnInit {
     const confirmLogout = confirm('Are you sure you want to logout?');
     if (confirmLogout) {
       // Clear any stored data
-      localStorage.removeItem('driverToken');
+      localStorage.removeItem('userToken');
+      localStorage.removeItem('sessionToken');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userType');
       
       // Navigate to login page
       this.router.navigate(['/register']);
     }
+  }
+
+  /**
+   * Format date for display
+   */
+  formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  /**
+   * Get status display text
+   */
+  getStatusDisplayText(status: string): string {
+    const statusMap: { [key: string]: string } = {
+      'requested': 'Requested',
+      'accepted': 'Accepted',
+      'driver_on_way': 'On The Way',
+      'rider_picked_up': 'In Progress',
+      'completed': 'Completed',
+      'cancelled': 'Cancelled'
+    };
+    return statusMap[status] || status;
   }
 
   /**
@@ -457,37 +577,9 @@ export class DriverDashboardComponent implements OnInit {
   }
 
   /**
-   * Format date for display
+   * Clear error message
    */
-  formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  /**
-   * Generate random OTP
-   */
-  private generateOTP(): string {
-    return Math.floor(1000 + Math.random() * 9000).toString();
-  }
-
-  /**
-   * Clear all pending requests
-   */
-  clearPendingRequests(): void {
-    this.pendingRequests = [];
-  }
-
-  /**
-   * Refresh pending requests
-   */
-  refreshRequests(): void {
-    if (this.isAvailable) {
-      this.loadMockData();
-    }
+  clearError(): void {
+    this.errorMessage = '';
   }
 }

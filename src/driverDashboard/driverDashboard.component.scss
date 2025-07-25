@@ -1,6 +1,82 @@
 .dashboard-container {
   min-height: 100vh;
   background-color: #f8f9fa;
+  position: relative;
+}
+
+// Loading Overlay
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+
+  .loading-content {
+    text-align: center;
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #1e3a8a;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    p {
+      margin: 0;
+      color: #6c757d;
+      font-weight: 500;
+    }
+  }
+}
+
+// Error Banner
+.error-banner {
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: 12px 24px;
+  margin: 0;
+
+  .error-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    .error-icon {
+      color: #dc2626;
+      font-size: 18px;
+    }
+
+    .error-text {
+      flex: 1;
+      color: #991b1b;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .error-close {
+      background: none;
+      border: none;
+      color: #991b1b;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+
+      &:hover {
+        color: #7f1d1d;
+      }
+    }
+  }
 }
 
 // Header
@@ -197,6 +273,7 @@
     color: #6c757d;
     border-bottom: 2px solid transparent;
     transition: all 0.2s ease;
+    position: relative;
 
     &:hover {
       color: #1a1a1a;
@@ -206,6 +283,29 @@
       color: #1a1a1a;
       border-bottom-color: #1e3a8a;
       background-color: #f8f9fa;
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 8px;
+      height: 8px;
+      background-color: #dc3545;
+      border-radius: 50%;
+    }
+
+    .count-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background-color: #1e3a8a;
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      min-width: 16px;
+      text-align: center;
     }
   }
 }
@@ -349,9 +449,26 @@
   }
 }
 
-.no-requests-message {
+.no-requests-message, .no-ride-message, .no-history-message {
   text-align: center;
   padding: 60px 20px;
+
+  .no-requests-icon, .no-ride-icon, .no-history-icon {
+    font-size: 64px;
+    margin-bottom: 24px;
+    opacity: 0.5;
+  }
+
+  h2, h3 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    color: #1a1a1a;
+  }
+
+  h3 {
+    font-size: 20px;
+  }
 
   p {
     color: #6c757d;
@@ -362,7 +479,7 @@
   .availability-reminder {
     margin-top: 24px;
 
-    .go-online-btn {
+    .go-online-btn, .accept-requests-btn, .start-driving-btn {
       background-color: #1e3a8a;
       color: white;
       border: none;
@@ -375,6 +492,27 @@
 
       &:hover {
         background-color: #1e40af;
+      }
+    }
+  }
+
+  .refresh-section {
+    margin-top: 24px;
+
+    .refresh-btn {
+      background: none;
+      border: 1px solid #1e3a8a;
+      color: #1e3a8a;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: #1e3a8a;
+        color: white;
       }
     }
   }
@@ -393,6 +531,10 @@
 }
 
 .rider-card {
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 20px;
+
   h4 {
     font-size: 16px;
     font-weight: 600;
@@ -426,6 +568,16 @@
       &:hover {
         background-color: #f8f9fa;
         border-color: #1e3a8a;
+      }
+
+      &.secondary {
+        border-color: #1e3a8a;
+        color: #1e3a8a;
+
+        &:hover {
+          background-color: #1e3a8a;
+          color: white;
+        }
       }
     }
   }
@@ -497,11 +649,15 @@
   }
 
   .secondary-controls {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
 
-    .nav-btn {
-      flex: 1;
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+
+    .status-btn, .nav-btn {
       background: white;
       color: #1e3a8a;
       border: 1px solid #1e3a8a;
@@ -512,9 +668,16 @@
       cursor: pointer;
       transition: all 0.2s ease;
 
-      &:hover {
+      &:hover:not(:disabled) {
         background-color: #1e3a8a;
         color: white;
+      }
+
+      &:disabled {
+        background-color: #f8f9fa;
+        color: #6b7280;
+        border-color: #e1e5e9;
+        cursor: not-allowed;
       }
     }
 
@@ -538,45 +701,28 @@
 
 .route-map-section {
   .map-placeholder {
-    background-color: #f8f9fa;
-    border: 2px dashed #e1e5e9;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px dashed #dee2e6;
     border-radius: 8px;
     padding: 60px 20px;
     text-align: center;
-    color: #6c757d;
-  }
-}
 
-.no-ride-message {
-  text-align: center;
-  padding: 60px 20px;
+    .map-content {
+      .map-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        display: block;
+      }
 
-  h2 {
-    font-size: 24px;
-    font-weight: 600;
-    margin: 0 0 16px 0;
-    color: #1a1a1a;
-  }
+      p {
+        margin: 0 0 8px 0;
+        color: #6c757d;
 
-  p {
-    color: #6c757d;
-    margin: 0 0 24px 0;
-    font-size: 16px;
-  }
-
-  .accept-requests-btn {
-    background-color: #1e3a8a;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-
-    &:hover {
-      background-color: #1e40af;
+        &.map-note {
+          font-size: 12px;
+          color: #9ca3af;
+        }
+      }
     }
   }
 }
@@ -601,6 +747,14 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
+  &.status-completed {
+    border-left: 4px solid #10b981;
+  }
+
+  &.status-cancelled {
+    border-left: 4px solid #dc3545;
+  }
+
   .ride-route {
     flex: 1;
 
@@ -617,18 +771,50 @@
       margin-bottom: 4px;
       font-size: 14px;
       color: #6c757d;
+      flex-wrap: wrap;
     }
 
     .ride-id {
       font-size: 12px;
       color: #9ca3af;
+      margin-bottom: 8px;
+    }
+
+    .ride-status {
+      .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+
+        &.completed {
+          background-color: #d1fae5;
+          color: #065f46;
+        }
+
+        &.cancelled {
+          background-color: #fee2e2;
+          color: #991b1b;
+        }
+
+        &.requested {
+          background-color: #fef3c7;
+          color: #92400e;
+        }
+
+        &.accepted {
+          background-color: #dbeafe;
+          color: #1e40af;
+        }
+      }
     }
   }
 
   .ride-summary {
     display: flex;
-    align-items: center;
-    gap: 16px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
 
     .price {
       font-size: 18px;
@@ -663,33 +849,6 @@
         background-color: #1e3a8a;
         color: white;
       }
-    }
-  }
-}
-
-.no-history-message {
-  text-align: center;
-  padding: 60px 20px;
-
-  p {
-    color: #6c757d;
-    margin: 0 0 24px 0;
-    font-size: 16px;
-  }
-
-  .start-driving-btn {
-    background-color: #1e3a8a;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-
-    &:hover {
-      background-color: #1e40af;
     }
   }
 }
@@ -781,8 +940,6 @@
     }
 
     .status-badge {
-      background-color: #d4edda;
-      color: #155724;
       padding: 4px 12px;
       border-radius: 12px;
       font-size: 12px;
@@ -791,6 +948,11 @@
       &.verified {
         background-color: #1e3a8a;
         color: white;
+      }
+
+      &.pending {
+        background-color: #fef3c7;
+        color: #92400e;
       }
     }
   }
@@ -840,5 +1002,103 @@
   &:hover {
     background-color: #1e3a8a;
     color: white;
+  }
+}
+
+// Animations
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .header {
+    padding: 12px 16px;
+
+    .header-right {
+      gap: 12px;
+
+      .welcome-text {
+        display: none;
+      }
+    }
+  }
+
+  .tab-content {
+    padding: 16px;
+  }
+
+  .content-wrapper {
+    padding: 20px;
+  }
+
+  .ride-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+
+    .ride-summary {
+      align-items: flex-start;
+      flex-direction: row;
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+
+  .request-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+
+    .request-actions {
+      width: 100%;
+      justify-content: space-between;
+
+      .action-buttons {
+        flex-direction: row;
+        gap: 12px;
+
+        .accept-btn, .decline-btn {
+          flex: 1;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .tab-navigation {
+    padding: 0 12px;
+
+    .tab-btn {
+      padding: 12px 16px;
+      font-size: 13px;
+    }
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .secondary-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  .rider-actions {
+    flex-direction: column;
+
+    .action-btn {
+      width: 100%;
+    }
   }
 }

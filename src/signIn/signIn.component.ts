@@ -173,7 +173,9 @@ export class SignInComponent implements OnInit {
     // Navigate based on user type
     if (credentials.userType === 'rider') {
       this.router.navigate(['/rider-dashboard']);
-    } else {
+    } else if (credentials.userType === 'driver') {
+      //console.log("directing to driver-dashboard");
+      //alert("driver daashboard");
       this.router.navigate(['/driver-dashboard']);
     }
   }

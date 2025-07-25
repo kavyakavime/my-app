@@ -18,23 +18,40 @@
         </label>
       </div>
       <div class="user-info">
-        <span class="welcome-text">Welcome, {{ currentDriver.name }}</span>
+        <span class="welcome-text">Welcome, {{ (currentDriver?.full_name) || 'Driver' }}</span>
         <button class="logout-btn" (click)="logout()">Logout</button>
       </div>
     </div>
   </header>
 
+  <!-- Loading Indicator -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p>Loading driver data...</p>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div class="error-banner" *ngIf="errorMessage && !isLoading">
+    <div class="error-content">
+      <span class="error-icon">⚠</span>
+      <span class="error-text">{{ errorMessage }}</span>
+      <button class="error-close" (click)="clearError()">✕</button>
+    </div>
+  </div>
+
   <!-- Stats Dashboard -->
-  <section class="stats-section">
+  <section class="stats-section" *ngIf="!isLoading && currentDriver">
     <div class="stats-grid">
       <div class="stat-card status-card">
         <div class="status-badge" [class.available]="isAvailable" [class.offline]="!isAvailable">
-          {{ isAvailable ? 'Available' : 'Offline' }}
+          {{ availabilityStatus }}
         </div>
         <div class="stat-label">Status</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">{{ driverStats.rating }}</div>
+        <div class="stat-value">{{ driverStats.rating | number:'1.1-1' }}</div>
         <div class="stat-label">Rating</div>
       </div>
       <div class="stat-card">
@@ -42,20 +59,21 @@
         <div class="stat-label">Total Rides</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">${{ driverStats.monthlyEarnings | number:'1.0-0' }}</div>
+        <div class="stat-value">${{ earningsSummary.thisMonth | number:'1.0-0' }}</div>
         <div class="stat-label">This Month Earnings</div>
       </div>
     </div>
   </section>
 
   <!-- Tab Navigation -->
-  <nav class="tab-navigation">
+  <nav class="tab-navigation" *ngIf="!isLoading">
     <button 
       class="tab-btn" 
       [class.active]="activeTab === 'requests'"
       (click)="setActiveTab('requests')"
     >
       Ride Requests
+      <span class="count-badge" *ngIf="hasPendingRequests">{{ pendingRequests.length }}</span>
     </button>
     <button 
       class="tab-btn" 
@@ -63,6 +81,7 @@
       (click)="setActiveTab('current')"
     >
       Current Ride
+      <span class="notification-badge" *ngIf="hasCurrentRide"></span>
     </button>
     <button 
       class="tab-btn" 
@@ -70,6 +89,7 @@
       (click)="setActiveTab('history')"
     >
       Ride History
+      <span class="count-badge" *ngIf="hasRideHistory">{{ rideHistory.length }}</span>
     </button>
     <button 
       class="tab-btn" 
@@ -81,27 +101,27 @@
   </nav>
 
   <!-- Tab Content -->
-  <main class="tab-content">
+  <main class="tab-content" *ngIf="!isLoading">
     <!-- Ride Requests Tab -->
     <div *ngIf="activeTab === 'requests'" class="tab-panel requests-panel">
       <div class="content-wrapper">
         <h2>Pending Ride Requests</h2>
         <p class="subtitle">Accept or decline ride requests from nearby riders</p>
 
-        <div class="requests-list" *ngIf="pendingRequests.length > 0; else noRequests">
+        <div class="requests-list" *ngIf="hasPendingRequests; else noRequests">
           <div
             *ngFor="let request of pendingRequests"
             class="request-card"
           >
             <div class="request-info">
-              <h4>{{ request.riderName }}</h4>
+              <h4>{{ request.rider.name }}</h4>
               <div class="route">{{ request.pickup }} → {{ request.destination }}</div>
               <div class="request-meta">
-                <span>{{ request.distance }} • ETA: {{ request.eta }}</span>
+                <span>{{ request.estimatedEta }} • {{ request.rideType }}</span>
               </div>
             </div>
             <div class="request-actions">
-              <span class="fare">${{ request.fare }}</span>
+              <span class="fare">${{ request.estimatedFare }}</span>
               <div class="action-buttons">
                 <button
                   class="accept-btn"
@@ -124,10 +144,15 @@
 
         <ng-template #noRequests>
           <div class="no-requests-message">
+            <div class="no-requests-icon">🚗</div>
             <p>No pending ride requests at the moment.</p>
             <div class="availability-reminder" *ngIf="!isAvailable">
               <p>Make sure you're available to receive ride requests.</p>
               <button class="go-online-btn" (click)="toggleAvailability()">Go Online</button>
+            </div>
+            <div class="refresh-section" *ngIf="isAvailable">
+              <p>Looking for ride requests...</p>
+              <button class="refresh-btn" (click)="loadPendingRequests()">Refresh</button>
             </div>
           </div>
         </ng-template>
@@ -172,19 +197,33 @@
                 </div>
                 <div class="detail-row">
                   <span class="label">Status:</span>
-                  <span class="status-badge small">{{ currentRide.status }}</span>
+                  <span class="status-badge small">{{ getStatusDisplayText(currentRide.status) }}</span>
                 </div>
               </div>
               <div class="ride-controls">
                 <button 
                   class="complete-btn" 
                   (click)="completeRide()"
-                  [disabled]="currentRide.status !== 'Rider Picked Up'"
+                  [disabled]="currentRide.status !== 'rider_picked_up'"
                 >
                   Complete Ride
                 </button>
                 <div class="secondary-controls">
-                  <button class="nav-btn" (click)="startNavigation()">Start Navigation</button>
+                  <button 
+                    class="status-btn" 
+                    (click)="updateRideStatus('driver_on_way')"
+                    [disabled]="currentRide.status !== 'accepted'"
+                  >
+                    On The Way
+                  </button>
+                  <button 
+                    class="status-btn" 
+                    (click)="updateRideStatus('rider_picked_up')"
+                    [disabled]="currentRide.status !== 'driver_on_way'"
+                  >
+                    Picked Up
+                  </button>
+                  <button class="nav-btn" (click)="startNavigation()">Navigation</button>
                   <button class="emergency-btn" (click)="emergency()">Emergency</button>
                 </div>
               </div>
@@ -194,13 +233,18 @@
           <div class="route-map-section">
             <h3>Route Map</h3>
             <div class="map-placeholder">
-              <p>Map integration would go here</p>
+              <div class="map-content">
+                <span class="map-icon">🗺️</span>
+                <p>Map integration would go here</p>
+                <p class="map-note">Real-time navigation and tracking</p>
+              </div>
             </div>
           </div>
         </div>
 
         <ng-template #noCurrentRide>
           <div class="no-ride-message">
+            <div class="no-ride-icon">🚗</div>
             <h2>No Current Ride</h2>
             <p>You don't have any ongoing rides at the moment.</p>
             <button class="accept-requests-btn" (click)="setActiveTab('requests')">View Ride Requests</button>
@@ -215,23 +259,29 @@
         <h2>Ride History</h2>
         <p class="subtitle">View your completed rides</p>
 
-        <div class="history-list" *ngIf="rideHistory.length > 0; else noHistory">
+        <div class="history-list" *ngIf="hasRideHistory; else noHistory">
           <div
             *ngFor="let ride of rideHistory"
             class="history-card"
+            [ngClass]="'status-' + ride.status"
           >
             <div class="ride-route">
               <h4>{{ ride.pickup }} → {{ ride.destination }}</h4>
               <div class="ride-meta">
-                <span class="date">{{ ride.date }}</span>
+                <span class="date">{{ formatDate(ride.date) }}</span>
                 <span class="rider">{{ ride.riderName }}</span>
                 <span class="duration">{{ ride.duration }}</span>
               </div>
               <div class="ride-id">Ride ID: {{ ride.rideId }}</div>
+              <div class="ride-status">
+                <span class="status-badge" [ngClass]="ride.status">
+                  {{ getStatusDisplayText(ride.status) }}
+                </span>
+              </div>
             </div>
             <div class="ride-summary">
               <div class="price">${{ ride.fare }}</div>
-              <div class="rating">
+              <div class="rating" *ngIf="ride.status === 'completed'">
                 <span class="star">⭐</span>
                 <span>{{ ride.rating }}/5</span>
               </div>
@@ -242,7 +292,9 @@
 
         <ng-template #noHistory>
           <div class="no-history-message">
-            <p>No ride history available.</p>
+            <div class="no-history-icon">📋</div>
+            <h3>No Ride History</h3>
+            <p>You haven't completed any rides yet.</p>
             <button class="start-driving-btn" (click)="setActiveTab('requests')">Start Taking Rides</button>
           </div>
         </ng-template>
@@ -262,6 +314,26 @@
                   type="text"
                   id="fullName"
                   formControlName="fullName"
+                  class="form-input"
+                  readonly
+                />
+              </div>
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  [value]="currentDriver?.email || ''"
+                  class="form-input"
+                  readonly
+                />
+              </div>
+              <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input
+                  type="tel"
+                  id="phone"
+                  [value]="currentDriver?.phone_number || ''"
                   class="form-input"
                   readonly
                 />
@@ -314,6 +386,16 @@
                   readonly
                 />
               </div>
+              <div class="form-group">
+                <label for="licenseNumber">License Number</label>
+                <input
+                  type="text"
+                  id="licenseNumber"
+                  [value]="currentDriver?.license_number || ''"
+                  class="form-input"
+                  readonly
+                />
+              </div>
             </form>
           </div>
 
@@ -322,7 +404,10 @@
             <div class="document-list">
               <div class="document-item">
                 <span class="document-name">Driving License</span>
-                <span class="status-badge verified">Verified</span>
+                <span class="status-badge verified" *ngIf="currentDriver?.is_verified; else notVerified">Verified</span>
+                <ng-template #notVerified>
+                  <span class="status-badge pending">Pending</span>
+                </ng-template>
               </div>
               <div class="document-item">
                 <span class="document-name">Vehicle Registration</span>
@@ -340,15 +425,19 @@
             <div class="earnings-list">
               <div class="earnings-item">
                 <span class="earnings-label">Today's Earnings</span>
-                <span class="earnings-value">${{ earningsSummary.today }}</span>
+                <span class="earnings-value">${{ earningsSummary.today | number:'1.2-2' }}</span>
               </div>
               <div class="earnings-item">
                 <span class="earnings-label">This Week</span>
-                <span class="earnings-value">${{ earningsSummary.thisWeek }}</span>
+                <span class="earnings-value">${{ earningsSummary.thisWeek | number:'1.2-2' }}</span>
               </div>
               <div class="earnings-item">
                 <span class="earnings-label">This Month</span>
-                <span class="earnings-value">${{ earningsSummary.thisMonth }}</span>
+                <span class="earnings-value">${{ earningsSummary.thisMonth | number:'1.2-2' }}</span>
+              </div>
+              <div class="earnings-item">
+                <span class="earnings-label">Total Earnings</span>
+                <span class="earnings-value">${{ currentDriver?.total_earnings | number:'1.2-2' }}</span>
               </div>
             </div>
             <button class="view-report-btn" (click)="viewDetailedReport()">
