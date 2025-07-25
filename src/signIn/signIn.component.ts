@@ -2,14 +2,18 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService, SignInCredentials } from '../services/auth.service';
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+
+interface SignInCredentials {
+  email: string;
+  password: string;
+  userType: string;
+}
 
 interface User {
   id: number;
   email: string;
+  password_hash: string;
   full_name: string;
   phone_number: string;
   user_type: string;
@@ -25,15 +29,16 @@ interface ApiResponse {
 }
 
 @Component({
-    selector: 'app-sign-in',
-    standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, HttpClientModule], 
-    templateUrl: './signIn.component.html',
-    styleUrls: ['./signIn.component.scss']
-  })
+  selector: 'app-sign-in',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, HttpClientModule], 
+  templateUrl: './signIn.component.html',
+  styleUrls: ['./signIn.component.scss']
+})
 export class SignInComponent implements OnInit {
   signInForm: FormGroup;
   isLoading = false;
+  errorMessage = '';
   private API_URL = 'http://localhost:3000/api';
 
   constructor(
@@ -46,6 +51,7 @@ export class SignInComponent implements OnInit {
 
   ngOnInit(): void {
     // Component initialization logic
+    this.clearErrorMessage();
   }
 
   private createForm(): FormGroup {
@@ -70,6 +76,8 @@ export class SignInComponent implements OnInit {
   }
 
   onSubmit(): void {
+    this.clearErrorMessage();
+    
     if (this.signInForm.valid && !this.isLoading) {
       this.isLoading = true;
       
@@ -79,7 +87,6 @@ export class SignInComponent implements OnInit {
         userType: this.userType?.value
       };
 
-      // Simulate API call
       this.performSignIn(credentials);
     } else {
       // Mark all fields as touched to show validation errors
@@ -89,48 +96,79 @@ export class SignInComponent implements OnInit {
 
   private async performSignIn(credentials: SignInCredentials): Promise<void> {
     try {
-      const isAuthenticated = await this.mockAuthentication(credentials);
-      this.isLoading = false;
+      // Step 1: Fetch user data from database
+      const userData = await this.fetchUserData(credentials.email);
       
-      if (isAuthenticated) {
-        console.log('Authentication successful');
-        this.handleSuccessfulSignIn(credentials);
-      } else {
-        console.log('Authentication failed');
-        this.handleSignInError();
+      if (!userData) {
+        this.handleSignInError('User not found');
+        return;
       }
+
+      // Step 2: Check if user is active and verified
+      if (!userData.is_active || !userData.is_verified) {
+        this.handleSignInError('Account is not active or verified');
+        return;
+      }
+
+      // Step 3: Check if user type matches
+      if (userData.user_type !== credentials.userType) {
+        this.handleSignInError('Invalid user type selected');
+        return;
+      }
+
+      // Step 4: Verify password (direct comparison since no hashing)
+      const isPasswordValid = await this.verifyPassword(credentials.password, userData.password_hash);
+      
+      if (isPasswordValid) {
+        this.handleSuccessfulSignIn(credentials, userData);
+      } else {
+        this.handleSignInError('Invalid email or password');
+      }
+      
     } catch (error) {
-      this.isLoading = false;
       console.error('Authentication error:', error);
-      this.handleSignInError();
+      this.handleSignInError('An error occurred during sign in. Please try again.');
     }
   }
 
-  private async mockAuthentication(credentials: SignInCredentials): Promise<boolean> {
+  private async fetchUserData(email: string): Promise<User | null> {
     try {
-      const response = await this.http.get<ApiResponse>(`http://localhost:3000/api/auth/users/email/${credentials.email}`).toPromise();
-      const userData: User = response!.data;
+      const response = await this.http.get<ApiResponse>(
+        `${this.API_URL}/auth/users/email/${email}`
+      ).toPromise();
       
-      console.log('Fetched user data:', userData);
-      
-      // Check if user exists and credentials match
-      if (userData && userData.email === credentials.email) {
-        // In a real app, you'd verify the password hash here
-        // For now, we'll accept any password for existing users
-        return userData.is_active && userData.is_verified;
-      }
-      
-      return false;
+      return response?.data || null;
     } catch (error) {
       console.error('Error fetching user data:', error);
+      return null;
+    }
+  }
+
+  private async verifyPassword(plainPassword: string, storedPassword: string): Promise<boolean> {
+    try {
+      // For now, just compare passwords directly (NOT RECOMMENDED FOR PRODUCTION)
+      console.log('Comparing passwords directly (no hashing)');
+      return plainPassword === storedPassword;
+    } catch (error) {
+      console.error('Error verifying password:', error);
       return false;
     }
   }
 
-  private handleSuccessfulSignIn(credentials: SignInCredentials): void {
-    // TODO: Store authentication token/user data
+  private handleSuccessfulSignIn(credentials: SignInCredentials, userData: User): void {
+    this.isLoading = false;
+    
+    // Store authentication data
     localStorage.setItem('userType', credentials.userType);
     localStorage.setItem('userEmail', credentials.email);
+    localStorage.setItem('userId', userData.id.toString());
+    localStorage.setItem('userName', userData.full_name);
+    
+    // Generate and store a simple session token (in production, use JWT)
+    const sessionToken = this.generateSessionToken();
+    localStorage.setItem('sessionToken', sessionToken);
+    
+    console.log('Authentication successful for user:', userData.full_name);
     
     // Navigate based on user type
     if (credentials.userType === 'rider') {
@@ -140,10 +178,26 @@ export class SignInComponent implements OnInit {
     }
   }
 
-  private handleSignInError(): void {
-    // TODO: Show error message to user
-    alert('Invalid credentials. Please try again.');
+  private handleSignInError(message: string = 'Invalid credentials. Please try again.'): void {
+    this.isLoading = false;
+    this.errorMessage = message;
     this.signInForm.patchValue({ password: '' });
+    
+    // Clear error message after 5 seconds
+    setTimeout(() => {
+      this.clearErrorMessage();
+    }, 5000);
+  }
+
+  private clearErrorMessage(): void {
+    this.errorMessage = '';
+  }
+
+  private generateSessionToken(): string {
+    // Simple session token generation (use JWT in production)
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2);
+    return `${timestamp}_${random}`;
   }
 
   private markFormGroupTouched(): void {
@@ -155,14 +209,12 @@ export class SignInComponent implements OnInit {
 
   onForgotPassword(event: Event): void {
     event.preventDefault();
-    // TODO: Navigate to forgot password page or show modal
     console.log('Forgot password clicked');
     this.router.navigate(['/forgot-password']);
   }
 
   onSignUp(event: Event): void {
     event.preventDefault();
-    // TODO: Navigate to sign up page
     console.log('Sign up clicked');
     this.router.navigate(['/create-account']);
   }
