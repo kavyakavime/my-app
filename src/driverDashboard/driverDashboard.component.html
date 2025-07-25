@@ -114,14 +114,14 @@
             class="request-card"
           >
             <div class="request-info">
-              <h4>{{ request.rider.name }}</h4>
-              <div class="route">{{ request.pickup }} → {{ request.destination }}</div>
+              <h4>{{ request.rider.full_name }}</h4>
+              <div class="route">{{ request.pickup_location }} → {{ request.destination }}</div>
               <div class="request-meta">
-                <span>{{ request.estimatedEta }} • {{ request.rideType }}</span>
+                <span>5-10 mins • {{ request.ride_type }}</span>
               </div>
             </div>
             <div class="request-actions">
-              <span class="fare">${{ request.estimatedFare }}</span>
+              <span class="fare">${{ request.estimated_fare }}</span>
               <div class="action-buttons">
                 <button
                   class="accept-btn"
@@ -170,9 +170,9 @@
             <div class="rider-details-section">
               <h3>Rider Details</h3>
               <div class="rider-card">
-                <h4>{{ currentRide.rider.name }}</h4>
-                <p>{{ currentRide.rider.phone }}</p>
-                <p>OTP: <strong>{{ currentRide.otp }}</strong></p>
+                <h4>{{ currentRide.rider.full_name }}</h4>
+                <p>{{ currentRide.rider.phone_number }}</p>
+                <p *ngIf="currentRide.otp">OTP: <strong>{{ currentRide.otp }}</strong></p>
                 <div class="rider-actions">
                   <button class="action-btn secondary" (click)="callRider()">Call Rider</button>
                   <button class="action-btn secondary" (click)="messageRider()">Message</button>
@@ -185,7 +185,7 @@
               <div class="trip-details-card">
                 <div class="detail-row">
                   <span class="label">Pickup:</span>
-                  <span class="value">{{ currentRide.pickup }}</span>
+                  <span class="value">{{ currentRide.pickup_location }}</span>
                 </div>
                 <div class="detail-row">
                   <span class="label">Destination:</span>
@@ -193,7 +193,7 @@
                 </div>
                 <div class="detail-row">
                   <span class="label">Fare:</span>
-                  <span class="value">${{ currentRide.fare }}</span>
+                  <span class="value">${{ currentRide.final_fare || currentRide.estimated_fare }}</span>
                 </div>
                 <div class="detail-row">
                   <span class="label">Status:</span>

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient, HttpClientModule, HttpHeaders } from '@angular/common/http';
 import { debounceTime, distinctUntilChanged, switchMap, of, catchError, Subscription, interval } from 'rxjs';
 
 interface User {
@@ -74,6 +74,7 @@ interface ApiResponse<T> {
   profile?: T;
   ride?: T;
   count?: number;
+  success?: boolean;
 }
 
 interface RiderApiData {
@@ -105,6 +106,46 @@ interface RideApiData {
   make?: string | null;
   model?: string | null;
   plate_number?: string | null;
+}
+
+interface CurrentRideApiData {
+  id: number;
+  rider_id: number;
+  driver_id?: number | null;
+  pickup_location: string;
+  destination: string;
+  ride_type: string;
+  status: string;
+  estimated_fare: string;
+  final_fare?: string | null;
+  created_at: string;
+  accepted_at?: string | null;
+  completed_at?: string | null;
+  otp?: string;
+  driver?: {
+    id: number;
+    full_name: string;
+    phone_number: string;
+    make?: string;
+    model?: string;
+    plate_number?: string;
+    rating?: string;
+  } | null;
+}
+
+interface RideRequestData {
+  pickup_location: string;
+  destination: string;
+  ride_type: string;
+  estimated_fare: number;
+  pickup_coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  destination_coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 @Component({
@@ -185,6 +226,17 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get auth headers for API requests
+   */
+  private getAuthHeaders(): HttpHeaders {
+    const token = localStorage.getItem('sessionToken') || localStorage.getItem('userToken');
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+  }
+
+  /**
    * Load user profile from localStorage and API
    */
   private loadUserProfile(): void {
@@ -221,7 +273,7 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
           this.currentUser.phoneNumber = response.data.phone_number;
           this.currentUser.name = response.data.full_name;
           
-          // Load rider's rides
+          // Load rider's rides and current ride
           this.loadRideHistory();
           this.loadCurrentRide();
           this.setupLocationAutocomplete();
@@ -242,19 +294,16 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
   private loadCurrentRide(): void {
     if (!this.riderId) return;
 
-    const sub = this.http.get<ApiResponse<RideApiData[]>>(`${this.API_URL}/rider/${this.riderId}/rides`).subscribe({
+    const headers = this.getAuthHeaders();
+    const sub = this.http.get<ApiResponse<CurrentRideApiData>>(
+      `${this.API_URL}/rider/rides/current`, 
+      { headers }
+    ).subscribe({
       next: (response) => {
-        if (response.data && response.data.length > 0) {
-          // Find the most recent active ride
-          const activeRide = response.data.find(ride => 
-            ['requested', 'accepted', 'driver_on_way', 'rider_picked_up'].includes(ride.status)
-          );
-          
-          if (activeRide) {
-            this.currentRide = this.mapApiRideToCurrentRide(activeRide);
+        if (response.data) {
+          this.currentRide = this.mapApiCurrentRideToCurrentRide(response.data);
+          if (this.currentRide && this.currentRide.status !== 'completed' && this.currentRide.status !== 'cancelled') {
             this.setActiveTab('current');
-          } else {
-            this.currentRide = null;
           }
         } else {
           this.currentRide = null;
@@ -274,7 +323,11 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
   private loadRideHistory(): void {
     if (!this.riderId) return;
 
-    const sub = this.http.get<ApiResponse<RideApiData[]>>(`${this.API_URL}/rider/${this.riderId}/rides`).subscribe({
+    const headers = this.getAuthHeaders();
+    const sub = this.http.get<ApiResponse<RideApiData[]>>(
+      `${this.API_URL}/rider/rides/history`, 
+      { headers }
+    ).subscribe({
       next: (response) => {
         if (response.data) {
           this.rideHistory = response.data
@@ -293,18 +346,19 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Map API ride data to CurrentRide interface
+   * Map API current ride data to CurrentRide interface
    */
-  private mapApiRideToCurrentRide(ride: RideApiData): CurrentRide {
+  private mapApiCurrentRideToCurrentRide(ride: CurrentRideApiData): CurrentRide {
     return {
-      rideId: ride.ride_id,
+      rideId: ride.id.toString(),
       status: ride.status,
-      driver: ride.driver_name ? {
-        id: '1',
-        name: ride.driver_name,
-        carModel: ride.make && ride.model ? `${ride.make} ${ride.model}` : 'Vehicle',
-        plateNumber: ride.plate_number || 'N/A',
-        rating: 4.5 // Default rating since not in API
+      driver: ride.driver ? {
+        id: ride.driver.id.toString(),
+        name: ride.driver.full_name,
+        carModel: ride.driver.make && ride.driver.model ? `${ride.driver.make} ${ride.driver.model}` : 'Vehicle',
+        plateNumber: ride.driver.plate_number || 'N/A',
+        rating: parseFloat(ride.driver.rating || '4.5'),
+        phone: ride.driver.phone_number
       } : {
         id: '',
         name: 'Driver Not Assigned',
@@ -312,11 +366,11 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
         plateNumber: '',
         rating: 0
       },
-      eta: ride.status === 'driver_on_way' ? '5 mins' : 'N/A',
+      eta: this.calculateETA(ride.status),
       fare: parseFloat((ride.final_fare || ride.estimated_fare) || '0') || 0,
       pickup: ride.pickup_location,
       destination: ride.destination,
-      otp: '1234', // Default OTP since not in API
+      otp: ride.otp || '',
       requestedAt: ride.created_at
     };
   }
@@ -342,11 +396,26 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Calculate ETA based on ride status
+   */
+  private calculateETA(status: string): string {
+    const etaMap: { [key: string]: string } = {
+      'requested': 'Looking for driver...',
+      'accepted': '5-10 mins',
+      'driver_on_way': '3-5 mins',
+      'rider_picked_up': 'In transit',
+      'completed': 'Completed',
+      'cancelled': 'Cancelled'
+    };
+    return etaMap[status] || 'N/A';
+  }
+
+  /**
    * Start polling for current ride updates
    */
   private startCurrentRidePolling(): void {
-    // Poll every 30 seconds for current ride updates
-    this.currentRidePolling = interval(30000).subscribe(() => {
+    // Poll every 10 seconds for current ride updates
+    this.currentRidePolling = interval(10000).subscribe(() => {
       if (this.currentRide && this.activeTab === 'current') {
         this.loadCurrentRide();
       }
@@ -432,6 +501,37 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
         return of([]);
       })
     );
+  }
+
+  /**
+   * Calculate estimated fare based on distance
+   */
+  private calculateEstimatedFare(pickup: LocationSuggestion, destination: LocationSuggestion, rideType: string): number {
+    // Simple fare calculation based on distance
+    const lat1 = parseFloat(pickup.lat);
+    const lon1 = parseFloat(pickup.lon);
+    const lat2 = parseFloat(destination.lat);
+    const lon2 = parseFloat(destination.lon);
+    
+    // Calculate distance in km using Haversine formula
+    const R = 6371; // Earth's radius in km
+    const dLat = this.toRad(lat2 - lat1);
+    const dLon = this.toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    
+    // Base fare + distance-based fare
+    const baseFare = { car: 50, bike: 30, auto: 40 }[rideType] || 50;
+    const perKmRate = { car: 12, bike: 8, auto: 10 }[rideType] || 12;
+    
+    return Math.round(baseFare + (distance * perKmRate));
+  }
+
+  private toRad(value: number): number {
+    return value * Math.PI / 180;
   }
 
   /**
@@ -551,7 +651,7 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Find available rides
+   * Request a ride - creates ride request in database
    */
   findRides(): void {
     if (!this.bookingForm.valid || this.isSearching) {
@@ -563,43 +663,66 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.riderId) {
+      alert('User data not loaded. Please refresh the page.');
+      return;
+    }
+
     this.isSearching = true;
 
-    const rideData = {
-      pickupLocation: this.selectedPickupLocation.display_name,
+    const rideType = this.bookingForm.get('rideType')?.value;
+    const estimatedFare = this.calculateEstimatedFare(
+      this.selectedPickupLocation, 
+      this.selectedDestinationLocation, 
+      rideType
+    );
+
+    const rideRequestData: RideRequestData = {
+      pickup_location: this.selectedPickupLocation.display_name,
       destination: this.selectedDestinationLocation.display_name,
-      rideType: this.bookingForm.get('rideType')?.value,
-      when: this.bookingForm.get('when')?.value
+      ride_type: rideType,
+      estimated_fare: estimatedFare,
+      pickup_coordinates: {
+        lat: parseFloat(this.selectedPickupLocation.lat),
+        lng: parseFloat(this.selectedPickupLocation.lon)
+      },
+      destination_coordinates: {
+        lat: parseFloat(this.selectedDestinationLocation.lat),
+        lng: parseFloat(this.selectedDestinationLocation.lon)
+      }
     };
 
-    // Since the rider/rides/request endpoint doesn't exist, we'll simulate the request
-    // In a real implementation, you would use the API endpoint
-    setTimeout(() => {
-      this.isSearching = false;
-      // Simulate successful ride request
-      alert('Ride requested successfully! Looking for available drivers...');
-      this.resetBookingForm();
-      
-      // Create a mock current ride
-      this.currentRide = {
-        rideId: 'R' + Date.now().toString().slice(-6),
-        status: 'requested',
-        driver: {
-          id: '',
-          name: 'Looking for driver...',
-          carModel: '',
-          plateNumber: '',
-          rating: 0
-        },
-        eta: 'Searching...',
-        fare: Math.floor(Math.random() * 20) + 10,
-        pickup: rideData.pickupLocation,
-        destination: rideData.destination,
-        requestedAt: new Date().toISOString()
-      };
-      
-      this.setActiveTab('current');
-    }, 2000);
+    const headers = this.getAuthHeaders();
+    const sub = this.http.post<ApiResponse<CurrentRideApiData>>(
+      `${this.API_URL}/rider/rides/request`,
+      rideRequestData,
+      { headers }
+    ).subscribe({
+      next: (response) => {
+        this.isSearching = false;
+        
+        if (response.success && response.data) {
+          alert('Ride requested successfully! Looking for available drivers...');
+          this.currentRide = this.mapApiCurrentRideToCurrentRide(response.data);
+          this.resetBookingForm();
+          this.setActiveTab('current');
+        } else {
+          alert(response.message || 'Failed to request ride. Please try again.');
+        }
+      },
+      error: (error) => {
+        this.isSearching = false;
+        console.error('Error requesting ride:', error);
+        
+        if (error.status === 400) {
+          alert('You already have an active ride. Please complete or cancel it first.');
+        } else {
+          alert('Failed to request ride. Please try again.');
+        }
+      }
+    });
+
+    this.subscriptions.push(sub);
   }
 
   /**
@@ -632,22 +755,43 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
     }
 
     const confirmCancel = confirm('Are you sure you want to cancel this ride?');
-    if (confirmCancel) {
-      // Simulate cancellation since we don't have the cancel endpoint
-      this.currentRide = null;
-      alert('Ride cancelled successfully!');
-      
-      // Refresh ride history to show cancelled ride
-      this.loadRideHistory();
+    if (!confirmCancel) {
+      return;
     }
+
+    const headers = this.getAuthHeaders();
+    const reason = 'Cancelled by rider';
+
+    const sub = this.http.post<ApiResponse<any>>(
+      `${this.API_URL}/rider/rides/current/cancel`,
+      { reason },
+      { headers }
+    ).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.currentRide = null;
+          alert('Ride cancelled successfully!');
+          this.loadRideHistory(); // Refresh history to show cancelled ride
+          this.setActiveTab('book');
+        } else {
+          alert(response.message || 'Failed to cancel ride.');
+        }
+      },
+      error: (error) => {
+        console.error('Error cancelling ride:', error);
+        alert('Failed to cancel ride. Please try again.');
+      }
+    });
+
+    this.subscriptions.push(sub);
   }
 
   /**
    * Call driver
    */
   callDriver(): void {
-    if (this.currentRide && this.currentRide.driver) {
-      alert(`Calling ${this.currentRide.driver.name}...`);
+    if (this.currentRide && this.currentRide.driver && this.currentRide.driver.phone) {
+      alert(`Calling ${this.currentRide.driver.name} at ${this.currentRide.driver.phone}...`);
       // In a real app, this would initiate a phone call
     }
   }
@@ -682,9 +826,27 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
     if (rating && parseInt(rating) >= 1 && parseInt(rating) <= 5) {
       const comment = prompt('Add a comment (optional):') || '';
       
-      // Simulate rating submission and assign rating to the ride object
-      (ride as any).rating = parseInt(rating);
-      alert('Thank you for your feedback!');
+      const headers = this.getAuthHeaders();
+      const sub = this.http.post<ApiResponse<any>>(
+        `${this.API_URL}/rider/rides/${ride.rideId}/rate`,
+        { rating: parseInt(rating), comment },
+        { headers }
+      ).subscribe({
+        next: (response) => {
+          if (response.success) {
+            (ride as any).rating = parseInt(rating);
+            alert('Thank you for your feedback!');
+          } else {
+            alert('Failed to submit rating. Please try again.');
+          }
+        },
+        error: (error) => {
+          console.error('Error submitting rating:', error);
+          alert('Failed to submit rating. Please try again.');
+        }
+      });
+
+      this.subscriptions.push(sub);
     }
   }
 
@@ -696,6 +858,7 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
     if (confirmLogout) {
       // Clear stored data
       localStorage.removeItem('userToken');
+      localStorage.removeItem('sessionToken');
       localStorage.removeItem('userId');
       localStorage.removeItem('userName');
       localStorage.removeItem('userEmail');

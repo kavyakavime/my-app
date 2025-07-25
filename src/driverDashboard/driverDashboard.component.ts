@@ -2,9 +2,8 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient, HttpClientModule, HttpHeaders } from '@angular/common/http';
 import { Subscription, interval } from 'rxjs';
-import { DriverService, Driver, RideData, RideRequest, CurrentRide } from '../services/driver.service';
 
 interface DriverStats {
   rating: number;
@@ -28,6 +27,88 @@ interface EarningsSummary {
   today: number;
   thisWeek: number;
   thisMonth: number;
+}
+
+interface Driver {
+  id: number;
+  user_id: number;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  license_number: string;
+  current_location_address: string;
+  is_available: boolean;
+  is_verified: boolean;
+  rating: string;
+  total_rides: number;
+  total_earnings: string;
+  created_at: string;
+  make?: string;
+  model?: string;
+  plate_number?: string;
+  vehicle_type?: string;
+  color?: string;
+  year?: number;
+}
+
+interface RideData {
+  id: number;
+  ride_id: string;
+  pickup_location: string;
+  destination: string;
+  ride_type: string;
+  status: string;
+  estimated_fare: string;
+  final_fare?: string;
+  created_at: string;
+  completed_at?: string;
+  rider_name: string;
+}
+
+interface RideRequest {
+  id: number;
+  rider_id: number;
+  pickup_location: string;
+  destination: string;
+  ride_type: string;
+  estimated_fare: string;
+  created_at: string;
+  rider: {
+    id: number;
+    full_name: string;
+    phone_number: string;
+  };
+}
+
+interface CurrentRide {
+  id: number;
+  rider_id: number;
+  driver_id: number;
+  pickup_location: string;
+  destination: string;
+  ride_type: string;
+  status: string;
+  estimated_fare: string;
+  final_fare?: string;
+  created_at: string;
+  accepted_at?: string;
+  completed_at?: string;
+  otp?: string;
+  rider: {
+    id: number;
+    full_name: string;
+    phone_number: string;
+  };
+}
+
+interface ApiResponse<T> {
+  message: string;
+  data?: T;
+  count?: number;
+  success?: boolean;
+  requests?: T;
+  currentRide?: T;
+  earnings?: T;
 }
 
 @Component({
@@ -67,12 +148,12 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
 
   private subscriptions: Subscription[] = [];
   private pollingSubscription: Subscription | null = null;
+  private readonly API_URL = 'http://localhost:3000/api';
 
   constructor(
     private formBuilder: FormBuilder,
     private router: Router,
-    private http: HttpClient,
-    private driverService: DriverService
+    private http: HttpClient
   ) {
     this.profileForm = this.formBuilder.group({
       fullName: [{ value: '', disabled: true }],
@@ -99,6 +180,17 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get auth headers for API requests
+   */
+  private getAuthHeaders(): HttpHeaders {
+    const token = localStorage.getItem('sessionToken') || localStorage.getItem('userToken');
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+  }
+
+  /**
    * Load driver data from backend
    */
   private loadDriverData(): void {
@@ -110,7 +202,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
 
     this.isLoading = true;
     
-    const driverSub = this.driverService.getDriverByEmail(userEmail).subscribe({
+    const driverSub = this.http.get<ApiResponse<Driver>>(`${this.API_URL}/driver/email/${userEmail}`).subscribe({
       next: (response) => {
         if (response.data) {
           this.currentDriver = response.data;
@@ -120,6 +212,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
           this.loadDriverRides();
           this.loadCurrentRide();
           this.loadEarnings();
+          this.loadPendingRequests();
         }
         this.isLoading = false;
       },
@@ -131,7 +224,6 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     });
 
     this.subscriptions.push(driverSub);
-    //alert("IN driverSUB"); //for test
   }
 
   /**
@@ -153,7 +245,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
   private loadDriverRides(): void {
     if (!this.currentDriver) return;
 
-    const ridesSub = this.driverService.getDriverRides(this.currentDriver.id).subscribe({
+    const ridesSub = this.http.get<ApiResponse<RideData[]>>(`${this.API_URL}/driver/${this.currentDriver.id}/rides`).subscribe({
       next: (response) => {
         if (response.data) {
           this.rideHistory = response.data.map(ride => ({
@@ -181,9 +273,13 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
    * Load current ride from backend
    */
   private loadCurrentRide(): void {
-    const currentRideSub = this.driverService.getCurrentRide().subscribe({
+    const headers = this.getAuthHeaders();
+    const currentRideSub = this.http.get<ApiResponse<CurrentRide>>(
+      `${this.API_URL}/driver/current-ride`,
+      { headers }
+    ).subscribe({
       next: (response) => {
-        this.currentRide = response.currentRide || null;
+        this.currentRide = response.currentRide || response.data || null;
         if (this.currentRide) {
           this.setActiveTab('current');
         }
@@ -201,13 +297,18 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
    * Load earnings from backend
    */
   private loadEarnings(): void {
-    const earningsSub = this.driverService.getEarnings().subscribe({
+    const headers = this.getAuthHeaders();
+    const earningsSub = this.http.get<ApiResponse<EarningsSummary>>(
+      `${this.API_URL}/driver/earnings`,
+      { headers }
+    ).subscribe({
       next: (response) => {
-        if (response.earnings) {
+        if (response.earnings || response.data) {
+          const earnings = response.earnings || response.data;
           this.earningsSummary = {
-            today: response.earnings.today || 0,
-            thisWeek: response.earnings.thisWeek || 0,
-            thisMonth: response.earnings.thisMonth || 0
+            today: earnings?.today || 0,
+            thisWeek: earnings?.thisWeek || 0,
+            thisMonth: earnings?.thisMonth || 0
           };
         }
       },
@@ -220,12 +321,16 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Load pending ride requests. moved from private.
+   * Load pending ride requests
    */
   loadPendingRequests(): void {
-    const requestsSub = this.driverService.getPendingRideRequests().subscribe({
+    const headers = this.getAuthHeaders();
+    const requestsSub = this.http.get<ApiResponse<RideRequest[]>>(
+      `${this.API_URL}/driver/ride-requests`,
+      { headers }
+    ).subscribe({
       next: (response) => {
-        this.pendingRequests = response.requests || [];
+        this.pendingRequests = response.requests || response.data || [];
       },
       error: (error) => {
         console.error('Error loading pending requests:', error);
@@ -240,8 +345,8 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
    * Start polling for updates
    */
   private startPolling(): void {
-    // Poll every 30 seconds for pending requests and current ride
-    this.pollingSubscription = interval(30000).subscribe(() => {
+    // Poll every 10 seconds for pending requests and current ride updates
+    this.pollingSubscription = interval(10000).subscribe(() => {
       if (this.isAvailable && this.activeTab === 'requests') {
         this.loadPendingRequests();
       }
@@ -303,7 +408,12 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
    * Toggle driver availability
    */
   toggleAvailability(): void {
-    const toggleSub = this.driverService.toggleAvailability(this.isAvailable).subscribe({
+    const headers = this.getAuthHeaders();
+    const toggleSub = this.http.put<ApiResponse<any>>(
+      `${this.API_URL}/driver/availability`,
+      { isAvailable: this.isAvailable },
+      { headers }
+    ).subscribe({
       next: (response) => {
         console.log('Availability updated:', response.message);
         if (!this.isAvailable) {
@@ -329,14 +439,23 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     if (this.isProcessing) return;
 
     this.isProcessing = true;
+    const headers = this.getAuthHeaders();
     
-    const acceptSub = this.driverService.acceptRideRequest(request.requestId).subscribe({
+    const acceptSub = this.http.post<ApiResponse<any>>(
+      `${this.API_URL}/driver/ride-requests/${request.id}/accept`,
+      {},
+      { headers }
+    ).subscribe({
       next: (response) => {
         this.isProcessing = false;
-        this.pendingRequests = this.pendingRequests.filter(req => req.requestId !== request.requestId);
-        this.loadCurrentRide();
-        this.setActiveTab('current');
-        alert('Ride request accepted successfully!');
+        if (response.success) {
+          this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
+          this.loadCurrentRide();
+          this.setActiveTab('current');
+          alert('Ride request accepted successfully!');
+        } else {
+          alert(response.message || 'Failed to accept ride request.');
+        }
       },
       error: (error) => {
         this.isProcessing = false;
@@ -355,12 +474,21 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     if (this.isProcessing) return;
 
     this.isProcessing = true;
+    const headers = this.getAuthHeaders();
     
-    const declineSub = this.driverService.declineRideRequest(request.requestId).subscribe({
+    const declineSub = this.http.post<ApiResponse<any>>(
+      `${this.API_URL}/driver/ride-requests/${request.id}/decline`,
+      {},
+      { headers }
+    ).subscribe({
       next: (response) => {
         this.isProcessing = false;
-        this.pendingRequests = this.pendingRequests.filter(req => req.requestId !== request.requestId);
-        alert('Ride request declined.');
+        if (response.success) {
+          this.pendingRequests = this.pendingRequests.filter(req => req.id !== request.id);
+          alert('Ride request declined.');
+        } else {
+          alert(response.message || 'Failed to decline ride request.');
+        }
       },
       error: (error) => {
         this.isProcessing = false;
@@ -379,33 +507,52 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     if (!this.currentRide) return;
 
     const confirmComplete = confirm('Are you sure you want to complete this ride?');
-    if (confirmComplete) {
-      const completeSub = this.driverService.completeRide().subscribe({
-        next: (response) => {
+    if (!confirmComplete) return;
+
+    const headers = this.getAuthHeaders();
+    const completeSub = this.http.post<ApiResponse<any>>(
+      `${this.API_URL}/driver/current-ride/complete`,
+      {},
+      { headers }
+    ).subscribe({
+      next: (response) => {
+        if (response.success) {
           this.currentRide = null;
           this.loadDriverRides();
           this.loadEarnings();
           this.loadDriverData(); // Reload to update stats
           alert('Ride completed successfully!');
-        },
-        error: (error) => {
-          console.error('Error completing ride:', error);
-          alert('Failed to complete ride. Please try again.');
+          this.setActiveTab('history');
+        } else {
+          alert(response.message || 'Failed to complete ride.');
         }
-      });
+      },
+      error: (error) => {
+        console.error('Error completing ride:', error);
+        alert('Failed to complete ride. Please try again.');
+      }
+    });
 
-      this.subscriptions.push(completeSub);
-    }
+    this.subscriptions.push(completeSub);
   }
 
   /**
    * Update ride status
    */
   updateRideStatus(status: string): void {
-    const updateSub = this.driverService.updateRideStatus(status).subscribe({
+    const headers = this.getAuthHeaders();
+    const updateSub = this.http.put<ApiResponse<any>>(
+      `${this.API_URL}/driver/current-ride/status`,
+      { status },
+      { headers }
+    ).subscribe({
       next: (response) => {
-        this.loadCurrentRide();
-        alert('Ride status updated successfully!');
+        if (response.success) {
+          this.loadCurrentRide();
+          alert('Ride status updated successfully!');
+        } else {
+          alert(response.message || 'Failed to update ride status.');
+        }
       },
       error: (error) => {
         console.error('Error updating ride status:', error);
@@ -420,8 +567,8 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
    * Call rider
    */
   callRider(): void {
-    if (this.currentRide) {
-      alert(`Calling ${this.currentRide.rider.name}...`);
+    if (this.currentRide && this.currentRide.rider) {
+      alert(`Calling ${this.currentRide.rider.full_name} at ${this.currentRide.rider.phone_number}...`);
       // In a real app, this would initiate a phone call
     }
   }
@@ -430,8 +577,8 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
    * Message rider
    */
   messageRider(): void {
-    if (this.currentRide) {
-      alert(`Opening chat with ${this.currentRide.rider.name}...`);
+    if (this.currentRide && this.currentRide.rider) {
+      alert(`Opening chat with ${this.currentRide.rider.full_name}...`);
       // In a real app, this would open a messaging interface
     }
   }
@@ -467,24 +614,34 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
    */
   updateLocation(): void {
     const newLocation = this.profileForm.get('currentLocation')?.value;
-    if (newLocation && newLocation.trim()) {
-      const updateSub = this.driverService.updateLocation(0, 0, newLocation).subscribe({
-        next: (response) => {
+    if (!newLocation || !newLocation.trim()) {
+      alert('Please enter a valid location.');
+      return;
+    }
+
+    const headers = this.getAuthHeaders();
+    const updateSub = this.http.put<ApiResponse<any>>(
+      `${this.API_URL}/driver/location`,
+      { lat: 0, lng: 0, address: newLocation },
+      { headers }
+    ).subscribe({
+      next: (response) => {
+        if (response.success) {
           alert('Location updated successfully!');
           if (this.currentDriver) {
             this.currentDriver.current_location_address = newLocation;
           }
-        },
-        error: (error) => {
-          console.error('Error updating location:', error);
-          alert('Failed to update location. Please try again.');
+        } else {
+          alert(response.message || 'Failed to update location.');
         }
-      });
+      },
+      error: (error) => {
+        console.error('Error updating location:', error);
+        alert('Failed to update location. Please try again.');
+      }
+    });
 
-      this.subscriptions.push(updateSub);
-    } else {
-      alert('Please enter a valid location.');
-    }
+    this.subscriptions.push(updateSub);
   }
 
   /**
