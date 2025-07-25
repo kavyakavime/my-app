@@ -1,844 +1,844 @@
 .dashboard-container {
-    min-height: 100vh;
-    background-color: #f8f9fa;
-  }
-  
-  // Header
-  .header {
-    background: white;
-    padding: 16px 24px;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+// Header
+.header {
+  background: white;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  .logo {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  
-    .logo {
-      display: flex;
-      align-items: center;
-  
-      .car-icon {
-        font-size: 24px;
-        margin-right: 8px;
-      }
-  
-      .logo-text {
-        font-size: 20px;
-        font-weight: 600;
-        color: #1a1a1a;
-      }
+
+    .car-icon {
+      font-size: 24px;
+      margin-right: 8px;
     }
-  
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-    }
-  
-    .availability-toggle {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-  
-      .toggle-label {
-        font-size: 14px;
-        font-weight: 500;
-        color: #1a1a1a;
-      }
-  
-      .toggle-switch {
-        position: relative;
-        display: inline-block;
-        width: 60px;
-        height: 34px;
-  
-        input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-  
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #ccc;
-          transition: 0.4s;
-          border-radius: 34px;
-  
-          &:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: 0.4s;
-            border-radius: 50%;
-          }
-        }
-  
-        input:checked + .slider {
-          background-color: #1e3a8a;
-        }
-  
-        input:checked + .slider:before {
-          transform: translateX(26px);
-        }
-      }
-    }
-  
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-  
-      .welcome-text {
-        color: #6c757d;
-        font-size: 14px;
-      }
-  
-      .logout-btn {
-        background: none;
-        border: none;
-        color: #1a1a1a;
-        font-weight: 500;
-        cursor: pointer;
-        font-size: 14px;
-  
-        &:hover {
-          text-decoration: underline;
-        }
-      }
-    }
-  }
-  
-  // Stats Section
-  .stats-section {
-    padding: 24px;
-    background: white;
-    border-bottom: 1px solid #e1e5e9;
-  }
-  
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 24px;
-    max-width: 1200px;
-    margin: 0 auto;
-  
-    @media (max-width: 768px) {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  
-    @media (max-width: 480px) {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  .stat-card {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    text-align: center;
-  
-    &.status-card {
-      .status-badge {
-        background-color: #1e3a8a;
-        color: white;
-        padding: 8px 24px;
-        border-radius: 20px;
-        font-weight: 500;
-        font-size: 16px;
-        display: inline-block;
-  
-        &.available {
-          background-color: #1e3a8a;
-        }
-  
-        &.offline {
-          background-color: #6c757d;
-        }
-      }
-    }
-  
-    .stat-value {
-      font-size: 32px;
+
+    .logo-text {
+      font-size: 20px;
       font-weight: 600;
       color: #1a1a1a;
-      margin-bottom: 8px;
-    }
-  
-    .stat-label {
-      color: #6c757d;
-      font-size: 14px;
-      margin-top: 8px;
     }
   }
-  
-  // Tab Navigation
-  .tab-navigation {
-    background: white;
+
+  .header-right {
     display: flex;
-    padding: 0 24px;
-    border-bottom: 1px solid #e1e5e9;
-  
-    .tab-btn {
-      background: none;
-      border: none;
-      padding: 16px 24px;
-      cursor: pointer;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .availability-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .toggle-label {
       font-size: 14px;
       font-weight: 500;
-      color: #6c757d;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s ease;
-  
-      &:hover {
-        color: #1a1a1a;
+      color: #1a1a1a;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+
+      input {
+        opacity: 0;
+        width: 0;
+        height: 0;
       }
-  
-      &.active {
-        color: #1a1a1a;
-        border-bottom-color: #1e3a8a;
-        background-color: #f8f9fa;
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 34px;
+
+        &:before {
+          position: absolute;
+          content: "";
+          height: 26px;
+          width: 26px;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          transition: 0.4s;
+          border-radius: 50%;
+        }
+      }
+
+      input:checked + .slider {
+        background-color: #1e3a8a;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(26px);
       }
     }
   }
-  
-  // Tab Content
-  .tab-content {
-    padding: 24px;
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .welcome-text {
+      color: #6c757d;
+      font-size: 14px;
+    }
+
+    .logout-btn {
+      background: none;
+      border: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 14px;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
-  
-  .content-wrapper {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    padding: 32px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  
-    h2 {
-      font-size: 24px;
+}
+
+// Stats Section
+.stats-section {
+  padding: 24px;
+  background: white;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+
+  &.status-card {
+    .status-badge {
+      background-color: #1e3a8a;
+      color: white;
+      padding: 8px 24px;
+      border-radius: 20px;
+      font-weight: 500;
+      font-size: 16px;
+      display: inline-block;
+
+      &.available {
+        background-color: #1e3a8a;
+      }
+
+      &.offline {
+        background-color: #6c757d;
+      }
+    }
+  }
+
+  .stat-value {
+    font-size: 32px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+  }
+
+  .stat-label {
+    color: #6c757d;
+    font-size: 14px;
+    margin-top: 8px;
+  }
+}
+
+// Tab Navigation
+.tab-navigation {
+  background: white;
+  display: flex;
+  padding: 0 24px;
+  border-bottom: 1px solid #e1e5e9;
+
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 16px 24px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6c757d;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+
+    &:hover {
+      color: #1a1a1a;
+    }
+
+    &.active {
+      color: #1a1a1a;
+      border-bottom-color: #1e3a8a;
+      background-color: #f8f9fa;
+    }
+  }
+}
+
+// Tab Content
+.tab-content {
+  padding: 24px;
+}
+
+.content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #1a1a1a;
+  }
+
+  .subtitle {
+    color: #6c757d;
+    margin: 0 0 24px 0;
+    font-size: 14px;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    color: #1a1a1a;
+  }
+}
+
+// Ride Requests Tab
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.request-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .request-info {
+    flex: 1;
+
+    h4 {
+      font-size: 18px;
       font-weight: 600;
       margin: 0 0 8px 0;
       color: #1a1a1a;
     }
-  
-    .subtitle {
+
+    .route {
+      font-size: 16px;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+
+    .request-meta {
       color: #6c757d;
-      margin: 0 0 24px 0;
       font-size: 14px;
     }
-  
-    h3 {
-      font-size: 18px;
+  }
+
+  .request-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+
+    .fare {
+      font-size: 20px;
       font-weight: 600;
-      margin: 0 0 16px 0;
       color: #1a1a1a;
     }
-  }
-  
-  // Ride Requests Tab
-  .requests-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  
-  .request-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 24px;
-    border: 1px solid #e1e5e9;
-    border-radius: 8px;
-    transition: box-shadow 0.2s ease;
-  
-    &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-  
-    .request-info {
-      flex: 1;
-  
-      h4 {
-        font-size: 18px;
-        font-weight: 600;
-        margin: 0 0 8px 0;
-        color: #1a1a1a;
-      }
-  
-      .route {
-        font-size: 16px;
-        color: #1a1a1a;
-        margin-bottom: 8px;
-      }
-  
-      .request-meta {
-        color: #6c757d;
-        font-size: 14px;
-      }
-    }
-  
-    .request-actions {
+
+    .action-buttons {
       display: flex;
-      align-items: center;
-      gap: 20px;
-  
-      .fare {
-        font-size: 20px;
-        font-weight: 600;
-        color: #1a1a1a;
-      }
-  
-      .action-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-  
-        .accept-btn {
-          background-color: #1e3a8a;
-          color: white;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 6px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background-color 0.2s ease;
-  
-          &:hover:not(:disabled) {
-            background-color: #1e40af;
-          }
-  
-          &:disabled {
-            background-color: #6b7280;
-            cursor: not-allowed;
-          }
-        }
-  
-        .decline-btn {
-          background: white;
-          color: #6c757d;
-          border: 1px solid #e1e5e9;
-          padding: 10px 20px;
-          border-radius: 6px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-  
-          &:hover:not(:disabled) {
-            background-color: #f8f9fa;
-            border-color: #1e3a8a;
-            color: #1e3a8a;
-          }
-  
-          &:disabled {
-            background-color: #f8f9fa;
-            cursor: not-allowed;
-          }
-        }
-      }
-    }
-  }
-  
-  .no-requests-message {
-    text-align: center;
-    padding: 60px 20px;
-  
-    p {
-      color: #6c757d;
-      margin: 0 0 16px 0;
-      font-size: 16px;
-    }
-  
-    .availability-reminder {
-      margin-top: 24px;
-  
-      .go-online-btn {
+      flex-direction: column;
+      gap: 8px;
+
+      .accept-btn {
         background-color: #1e3a8a;
         color: white;
         border: none;
-        padding: 12px 24px;
+        padding: 10px 20px;
         border-radius: 6px;
         font-size: 14px;
         font-weight: 500;
         cursor: pointer;
         transition: background-color 0.2s ease;
-  
-        &:hover {
+
+        &:hover:not(:disabled) {
           background-color: #1e40af;
+        }
+
+        &:disabled {
+          background-color: #6b7280;
+          cursor: not-allowed;
+        }
+      }
+
+      .decline-btn {
+        background: white;
+        color: #6c757d;
+        border: 1px solid #e1e5e9;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          background-color: #f8f9fa;
+          border-color: #1e3a8a;
+          color: #1e3a8a;
+        }
+
+        &:disabled {
+          background-color: #f8f9fa;
+          cursor: not-allowed;
         }
       }
     }
   }
-  
-  // Current Ride Tab
-  .ride-info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 32px;
-    margin-bottom: 32px;
-  
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
+}
+
+.no-requests-message {
+  text-align: center;
+  padding: 60px 20px;
+
+  p {
+    color: #6c757d;
+    margin: 0 0 16px 0;
+    font-size: 16px;
+  }
+
+  .availability-reminder {
+    margin-top: 24px;
+
+    .go-online-btn {
+      background-color: #1e3a8a;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: #1e40af;
+      }
     }
   }
-  
-  .rider-card {
+}
+
+// Current Ride Tab
+.ride-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-bottom: 32px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rider-card {
+  h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #1a1a1a;
+  }
+
+  p {
+    color: #6c757d;
+    margin: 0 0 8px 0;
+    font-size: 14px;
+  }
+
+  .rider-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+
+    .action-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: 1px solid #e1e5e9;
+      border-radius: 6px;
+      background: white;
+      color: #1a1a1a;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: #f8f9fa;
+        border-color: #1e3a8a;
+      }
+    }
+  }
+}
+
+.trip-details-card {
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f3f4;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: #6c757d;
+      font-size: 14px;
+    }
+
+    .value {
+      font-weight: 500;
+      color: #1a1a1a;
+      font-size: 14px;
+    }
+
+    .status-badge {
+      background-color: #1e3a8a;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+
+      &.small {
+        font-size: 11px;
+        padding: 3px 8px;
+      }
+    }
+  }
+}
+
+.ride-controls {
+  margin-top: 20px;
+
+  .complete-btn {
+    width: 100%;
+    background-color: #1e3a8a;
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: background-color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      background-color: #1e40af;
+    }
+
+    &:disabled {
+      background-color: #6b7280;
+      cursor: not-allowed;
+    }
+  }
+
+  .secondary-controls {
+    display: flex;
+    gap: 12px;
+
+    .nav-btn {
+      flex: 1;
+      background: white;
+      color: #1e3a8a;
+      border: 1px solid #1e3a8a;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: #1e3a8a;
+        color: white;
+      }
+    }
+
+    .emergency-btn {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: #c82333;
+      }
+    }
+  }
+}
+
+.route-map-section {
+  .map-placeholder {
+    background-color: #f8f9fa;
+    border: 2px dashed #e1e5e9;
+    border-radius: 8px;
+    padding: 60px 20px;
+    text-align: center;
+    color: #6c757d;
+  }
+}
+
+.no-ride-message {
+  text-align: center;
+  padding: 60px 20px;
+
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 16px 0;
+    color: #1a1a1a;
+  }
+
+  p {
+    color: #6c757d;
+    margin: 0 0 24px 0;
+    font-size: 16px;
+  }
+
+  .accept-requests-btn {
+    background-color: #1e3a8a;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: #1e40af;
+    }
+  }
+}
+
+// Ride History Tab
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.history-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .ride-route {
+    flex: 1;
+
     h4 {
       font-size: 16px;
       font-weight: 600;
       margin: 0 0 8px 0;
       color: #1a1a1a;
     }
-  
-    p {
-      color: #6c757d;
-      margin: 0 0 8px 0;
+
+    .ride-meta {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 4px;
       font-size: 14px;
-    }
-  
-    .rider-actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 16px;
-  
-      .action-btn {
-        flex: 1;
-        padding: 10px 16px;
-        border: 1px solid #e1e5e9;
-        border-radius: 6px;
-        background: white;
-        color: #1a1a1a;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-  
-        &:hover {
-          background-color: #f8f9fa;
-          border-color: #1e3a8a;
-        }
-      }
-    }
-  }
-  
-  .trip-details-card {
-    .detail-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid #f1f3f4;
-  
-      &:last-child {
-        border-bottom: none;
-      }
-  
-      .label {
-        color: #6c757d;
-        font-size: 14px;
-      }
-  
-      .value {
-        font-weight: 500;
-        color: #1a1a1a;
-        font-size: 14px;
-      }
-  
-      .status-badge {
-        background-color: #1e3a8a;
-        color: white;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 500;
-  
-        &.small {
-          font-size: 11px;
-          padding: 3px 8px;
-        }
-      }
-    }
-  }
-  
-  .ride-controls {
-    margin-top: 20px;
-  
-    .complete-btn {
-      width: 100%;
-      background-color: #1e3a8a;
-      color: white;
-      border: none;
-      padding: 14px 24px;
-      border-radius: 6px;
-      font-size: 16px;
-      font-weight: 500;
-      cursor: pointer;
-      margin-bottom: 12px;
-      transition: background-color 0.2s ease;
-  
-      &:hover:not(:disabled) {
-        background-color: #1e40af;
-      }
-  
-      &:disabled {
-        background-color: #6b7280;
-        cursor: not-allowed;
-      }
-    }
-  
-    .secondary-controls {
-      display: flex;
-      gap: 12px;
-  
-      .nav-btn {
-        flex: 1;
-        background: white;
-        color: #1e3a8a;
-        border: 1px solid #1e3a8a;
-        padding: 10px 16px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-  
-        &:hover {
-          background-color: #1e3a8a;
-          color: white;
-        }
-      }
-  
-      .emergency-btn {
-        background-color: #dc3545;
-        color: white;
-        border: none;
-        padding: 10px 16px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-  
-        &:hover {
-          background-color: #c82333;
-        }
-      }
-    }
-  }
-  
-  .route-map-section {
-    .map-placeholder {
-      background-color: #f8f9fa;
-      border: 2px dashed #e1e5e9;
-      border-radius: 8px;
-      padding: 60px 20px;
-      text-align: center;
       color: #6c757d;
     }
+
+    .ride-id {
+      font-size: 12px;
+      color: #9ca3af;
+    }
   }
-  
-  .no-ride-message {
-    text-align: center;
-    padding: 60px 20px;
-  
-    h2 {
-      font-size: 24px;
+
+  .ride-summary {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .price {
+      font-size: 18px;
       font-weight: 600;
-      margin: 0 0 16px 0;
       color: #1a1a1a;
     }
-  
-    p {
+
+    .rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
       color: #6c757d;
-      margin: 0 0 24px 0;
-      font-size: 16px;
+
+      .star {
+        color: #ffc107;
+      }
     }
-  
-    .accept-requests-btn {
-      background-color: #1e3a8a;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 6px;
-      font-size: 14px;
+
+    .view-details-btn {
+      background: none;
+      border: 1px solid #1e3a8a;
+      color: #1e3a8a;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      transition: background-color 0.2s ease;
-  
+      transition: all 0.2s ease;
+
       &:hover {
-        background-color: #1e40af;
+        background-color: #1e3a8a;
+        color: white;
       }
     }
   }
-  
-  // Ride History Tab
-  .history-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+}
+
+.no-history-message {
+  text-align: center;
+  padding: 60px 20px;
+
+  p {
+    color: #6c757d;
+    margin: 0 0 24px 0;
+    font-size: 16px;
   }
-  
-  .history-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    border: 1px solid #e1e5e9;
-    border-radius: 8px;
-    transition: box-shadow 0.2s ease;
-  
-    &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-  
-    .ride-route {
-      flex: 1;
-  
-      h4 {
-        font-size: 16px;
-        font-weight: 600;
-        margin: 0 0 8px 0;
-        color: #1a1a1a;
-      }
-  
-      .ride-meta {
-        display: flex;
-        gap: 16px;
-        margin-bottom: 4px;
-        font-size: 14px;
-        color: #6c757d;
-      }
-  
-      .ride-id {
-        font-size: 12px;
-        color: #9ca3af;
-      }
-    }
-  
-    .ride-summary {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-  
-      .price {
-        font-size: 18px;
-        font-weight: 600;
-        color: #1a1a1a;
-      }
-  
-      .rating {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 12px;
-        color: #6c757d;
-  
-        .star {
-          color: #ffc107;
-        }
-      }
-  
-      .view-details-btn {
-        background: none;
-        border: 1px solid #1e3a8a;
-        color: #1e3a8a;
-        padding: 6px 12px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-  
-        &:hover {
-          background-color: #1e3a8a;
-          color: white;
-        }
-      }
-    }
-  }
-  
-  .no-history-message {
-    text-align: center;
-    padding: 60px 20px;
-  
-    p {
-      color: #6c757d;
-      margin: 0 0 24px 0;
-      font-size: 16px;
-    }
-  
-    .start-driving-btn {
-      background-color: #1e3a8a;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-  
-      &:hover {
-        background-color: #1e40af;
-      }
-    }
-  }
-  
-  // Profile Tab
-  .profile-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 32px;
-  
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  .personal-info-section,
-  .vehicle-info-section,
-  .document-status-section,
-  .earnings-summary-section {
-    .form-group {
-      margin-bottom: 20px;
-  
-      label {
-        display: block;
-        margin-bottom: 6px;
-        font-weight: 500;
-        color: #333;
-        font-size: 14px;
-      }
-  
-      .form-input {
-        width: 100%;
-        padding: 12px 16px;
-        border: 1px solid #e1e5e9;
-        border-radius: 8px;
-        font-size: 14px;
-        transition: border-color 0.2s ease;
-        box-sizing: border-box;
-  
-        &:focus {
-          outline: none;
-          border-color: #007bff;
-          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-        }
-  
-        &[readonly] {
-          background-color: #f8f9fa;
-          color: #6c757d;
-        }
-      }
-    }
-  
-    .update-btn {
-      background-color: #1e3a8a;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-  
-      &:hover {
-        background-color: #1e40af;
-      }
-    }
-  }
-  
-  .document-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  
-    .document-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid #f1f3f4;
-  
-      &:last-child {
-        border-bottom: none;
-      }
-  
-      .document-name {
-        color: #1a1a1a;
-        font-size: 14px;
-      }
-  
-      .status-badge {
-        background-color: #d4edda;
-        color: #155724;
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 500;
-  
-        &.verified {
-          background-color: #1e3a8a;
-          color: white;
-        }
-      }
-    }
-  }
-  
-  .earnings-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 20px;
-  
-    .earnings-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid #f1f3f4;
-  
-      &:last-child {
-        border-bottom: none;
-      }
-  
-      .earnings-label {
-        color: #6c757d;
-        font-size: 14px;
-      }
-  
-      .earnings-value {
-        font-weight: 600;
-        color: #1a1a1a;
-        font-size: 16px;
-      }
-    }
-  }
-  
-  .view-report-btn {
-    background: none;
-    border: 1px solid #1e3a8a;
-    color: #1e3a8a;
-    padding: 10px 16px;
+
+  .start-driving-btn {
+    background-color: #1e3a8a;
+    color: white;
+    border: none;
+    padding: 12px 24px;
     border-radius: 6px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
-  
+    transition: background-color 0.2s ease;
+
     &:hover {
-      background-color: #1e3a8a;
-      color: white;
+      background-color: #1e40af;
     }
   }
+}
+
+// Profile Tab
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.personal-info-section,
+.vehicle-info-section,
+.document-status-section,
+.earnings-summary-section {
+  .form-group {
+    margin-bottom: 20px;
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #e1e5e9;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s ease;
+      box-sizing: border-box;
+
+      &:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+      }
+
+      &[readonly] {
+        background-color: #f8f9fa;
+        color: #6c757d;
+      }
+    }
+  }
+
+  .update-btn {
+    background-color: #1e3a8a;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: #1e40af;
+    }
+  }
+}
+
+.document-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .document-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f3f4;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .document-name {
+      color: #1a1a1a;
+      font-size: 14px;
+    }
+
+    .status-badge {
+      background-color: #d4edda;
+      color: #155724;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+
+      &.verified {
+        background-color: #1e3a8a;
+        color: white;
+      }
+    }
+  }
+}
+
+.earnings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  .earnings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f3f4;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .earnings-label {
+      color: #6c757d;
+      font-size: 14px;
+    }
+
+    .earnings-value {
+      font-weight: 600;
+      color: #1a1a1a;
+      font-size: 16px;
+    }
+  }
+}
+
+.view-report-btn {
+  background: none;
+  border: 1px solid #1e3a8a;
+  color: #1e3a8a;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #1e3a8a;
+    color: white;
+  }
+}

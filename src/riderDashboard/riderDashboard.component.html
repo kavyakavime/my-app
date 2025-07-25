@@ -5,9 +5,14 @@
       <span class="car-icon">🚗</span>
       <span class="logo-text">liteRide</span>
     </div>
-    <div class="user-info">
-      <span class="welcome-text">Welcome, {{ currentUser.name }}</span>
-      <button class="logout-btn" (click)="logout()">Logout</button>
+    <div class="header-actions">
+      <button class="refresh-btn" (click)="refreshData()" [disabled]="isLoading" title="Refresh">
+        <span class="refresh-icon" [class.spinning]="isLoading">⟳</span>
+      </button>
+      <div class="user-info">
+        <span class="welcome-text">Welcome, {{ currentUser.name || 'Rider' }}</span>
+        <button class="logout-btn" (click)="logout()">Logout</button>
+      </div>
     </div>
   </header>
 
@@ -26,6 +31,7 @@
       (click)="setActiveTab('current')"
     >
       Current Ride
+      <span class="notification-badge" *ngIf="hasCurrentRide"></span>
     </button>
     <button 
       class="tab-btn" 
@@ -33,6 +39,7 @@
       (click)="setActiveTab('history')"
     >
       Ride History
+      <span class="count-badge" *ngIf="rideHistory.length > 0">{{ rideHistory.length }}</span>
     </button>
   </nav>
 
@@ -42,10 +49,24 @@
     <div *ngIf="activeTab === 'book'" class="tab-panel book-ride-panel">
       <div class="content-wrapper">
         <div class="booking-section">
-          <h2>Book a Ride</h2>
-          <p class="subtitle">Enter your pickup and destination details</p>
+          <div class="section-header">
+            <h2>Book a Ride</h2>
+            <p class="subtitle">Enter your pickup and destination details</p>
+          </div>
 
-          <form [formGroup]="bookingForm" class="booking-form">
+          <!-- Active Ride Warning -->
+          <div class="warning-message" *ngIf="hasCurrentRide">
+            <div class="warning-content">
+              <span class="warning-icon">⚠</span>
+              <div class="warning-text">
+                <p><strong>You have an active ride</strong></p>
+                <p>Complete or cancel your current ride before booking a new one.</p>
+              </div>
+              <button class="view-current-btn" (click)="setActiveTab('current')">View Current Ride</button>
+            </div>
+          </div>
+
+          <form [formGroup]="bookingForm" class="booking-form" [class.disabled]="hasCurrentRide">
             <!-- Pickup Location with Autocomplete -->
             <div class="form-group">
               <label for="pickup">Pickup Location</label>
@@ -61,11 +82,12 @@
                     (blur)="hidePickupSuggestions()"
                     (keydown)="onInputKeydown($event, 'pickup')"
                     autocomplete="off"
+                    [disabled]="hasCurrentRide"
                   />
                   <button 
                     type="button" 
                     class="clear-btn" 
-                    *ngIf="pickupLocation"
+                    *ngIf="pickupLocation && !hasCurrentRide"
                     (click)="clearPickupLocation()"
                     title="Clear location"
                   >
@@ -77,7 +99,7 @@
                 </div>
                 
                 <!-- Pickup Suggestions Dropdown -->
-                <div class="suggestions-dropdown" *ngIf="showPickupSuggestions">
+                <div class="suggestions-dropdown" *ngIf="showPickupSuggestions && !hasCurrentRide">
                   <div 
                     class="suggestion-item"
                     *ngFor="let suggestion of pickupSuggestions"
@@ -107,11 +129,12 @@
                     (blur)="hideDestinationSuggestions()"
                     (keydown)="onInputKeydown($event, 'destination')"
                     autocomplete="off"
+                    [disabled]="hasCurrentRide"
                   />
                   <button 
                     type="button" 
                     class="clear-btn" 
-                    *ngIf="destination"
+                    *ngIf="destination && !hasCurrentRide"
                     (click)="clearDestinationLocation()"
                     title="Clear location"
                   >
@@ -123,7 +146,7 @@
                 </div>
                 
                 <!-- Destination Suggestions Dropdown -->
-                <div class="suggestions-dropdown" *ngIf="showDestinationSuggestions">
+                <div class="suggestions-dropdown" *ngIf="showDestinationSuggestions && !hasCurrentRide">
                   <div 
                     class="suggestion-item"
                     *ngFor="let suggestion of destinationSuggestions"
@@ -141,7 +164,7 @@
             <div class="form-row">
               <div class="form-group">
                 <label for="rideType">Ride Type</label>
-                <select id="rideType" formControlName="rideType" class="form-select">
+                <select id="rideType" formControlName="rideType" class="form-select" [disabled]="hasCurrentRide">
                   <option value="car">Car</option>
                   <option value="bike">Bike</option>
                   <option value="auto">Auto</option>
@@ -149,7 +172,7 @@
               </div>
               <div class="form-group">
                 <label for="when">When</label>
-                <select id="when" formControlName="when" class="form-select">
+                <select id="when" formControlName="when" class="form-select" [disabled]="hasCurrentRide">
                   <option value="now">Now</option>
                   <option value="schedule">Schedule Later</option>
                 </select>
@@ -159,17 +182,25 @@
             <button
               type="button"
               (click)="findRides()"
-              [disabled]="!isBookingFormValid || isSearching"
+              [disabled]="!isBookingFormValid || isSearching || hasCurrentRide"
               class="find-rides-btn"
+              [class.loading]="isSearching"
             >
-              {{ isSearching ? 'Searching...' : 'Find Rides' }}
+              <span *ngIf="!isSearching">{{ hasCurrentRide ? 'Complete Current Ride First' : 'Request Ride' }}</span>
+              <span *ngIf="isSearching" class="loading-content">
+                <span class="spinner">⟳</span>
+                Finding Drivers...
+              </span>
             </button>
           </form>
         </div>
 
+        <!-- Available Rides Section (if implemented for multiple driver options) -->
         <div class="available-rides-section" *ngIf="availableRides.length > 0">
-          <h3>Available Rides</h3>
-          <p class="subtitle">Choose from available drivers nearby</p>
+          <div class="section-header">
+            <h3>Available Drivers</h3>
+            <p class="subtitle">Choose from available drivers nearby</p>
+          </div>
 
           <div class="rides-list">
             <div
@@ -191,7 +222,7 @@
                   (click)="bookRide(ride)"
                   [disabled]="isBooking"
                 >
-                  Book Now
+                  {{ isBooking ? 'Booking...' : 'Select Driver' }}
                 </button>
               </div>
             </div>
@@ -204,60 +235,124 @@
     <div *ngIf="activeTab === 'current'" class="tab-panel current-ride-panel">
       <div class="content-wrapper">
         <div *ngIf="currentRide; else noCurrentRide">
-          <h2>Current Ride</h2>
-          <p class="subtitle">Track your ongoing ride</p>
+          <div class="section-header">
+            <h2>Current Ride</h2>
+            <p class="subtitle">Track your ongoing ride</p>
+          </div>
 
-          <div class="ride-status">
-            <span class="status-badge">{{ currentRide.status }}</span>
+          <div class="ride-status-section">
+            <div class="status-card" [ngClass]="getStatusClass(currentRide.status)">
+              <div class="status-content">
+                <div class="status-badge">{{ getStatusDisplayText(currentRide.status) }}</div>
+                <div class="status-time" *ngIf="currentRide.requestedAt">
+                  Requested {{ formatDate(currentRide.requestedAt) }}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="ride-info-grid">
-            <div class="driver-details-section">
-              <h3>Driver Details</h3>
-              <div class="driver-card">
-                <h4>{{ currentRide.driver.name }}</h4>
-                <p>{{ currentRide.driver.carModel }} - {{ currentRide.driver.plateNumber }}</p>
-                <div class="rating">
-                  <span class="star">⭐</span>
-                  <span>{{ currentRide.driver.rating }} rating</span>
+            <!-- Trip Details -->
+            <div class="trip-details-section">
+              <h3>Trip Details</h3>
+              <div class="trip-details-card">
+                <div class="route-info">
+                  <div class="route-point pickup">
+                    <span class="route-icon pickup-icon">🔴</span>
+                    <div class="route-text">
+                      <span class="route-label">Pickup</span>
+                      <span class="route-address">{{ currentRide.pickup }}</span>
+                    </div>
+                  </div>
+                  <div class="route-line"></div>
+                  <div class="route-point destination">
+                    <span class="route-icon destination-icon">🏁</span>
+                    <div class="route-text">
+                      <span class="route-label">Destination</span>
+                      <span class="route-address">{{ currentRide.destination }}</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="driver-actions">
-                  <button class="action-btn secondary" (click)="callDriver()">Call Driver</button>
-                  <button class="action-btn secondary" (click)="messageDriver()">Message</button>
+
+                <div class="ride-details">
+                  <div class="detail-row" *ngIf="currentRide.eta">
+                    <span class="label">ETA:</span>
+                    <span class="value">{{ currentRide.eta }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Fare:</span>
+                    <span class="value">${{ currentRide.fare }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Ride ID:</span>
+                    <span class="value">{{ currentRide.rideId }}</span>
+                  </div>
+                  <div class="detail-row" *ngIf="currentRide.otp">
+                    <span class="label">OTP:</span>
+                    <span class="value otp">{{ currentRide.otp }}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="ride-details-section">
-              <h3>Ride Details</h3>
-              <div class="ride-details-card">
-                <div class="detail-row">
-                  <span class="label">ETA:</span>
-                  <span class="value">{{ currentRide.eta }}</span>
+            <!-- Driver Details -->
+            <div class="driver-details-section" *ngIf="currentRide.driver">
+              <h3>Driver Details</h3>
+              <div class="driver-card">
+                <div class="driver-info">
+                  <h4>{{ currentRide.driver.name }}</h4>
+                  <p class="vehicle-info">{{ currentRide.driver.carModel }}</p>
+                  <p class="plate-info">{{ currentRide.driver.plateNumber }}</p>
+                  <div class="rating" *ngIf="currentRide.driver.rating">
+                    <span class="star">⭐</span>
+                    <span>{{ currentRide.driver.rating }} rating</span>
+                  </div>
                 </div>
-                <div class="detail-row">
-                  <span class="label">Fare:</span>
-                  <span class="value">${{ currentRide.fare }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="label">Ride ID:</span>
-                  <span class="value">{{ currentRide.rideId }}</span>
+                <div class="driver-actions">
+                  <button class="action-btn call-btn" (click)="callDriver()">
+                    <span class="btn-icon">📞</span>
+                    Call
+                  </button>
+                  <button class="action-btn message-btn" (click)="messageDriver()">
+                    <span class="btn-icon">💬</span>
+                    Message
+                  </button>
                 </div>
               </div>
-              <button class="cancel-btn" (click)="cancelRide()">Cancel Ride</button>
             </div>
           </div>
 
+          <!-- Ride Actions -->
+          <div class="ride-actions-section">
+            <button 
+              class="cancel-btn" 
+              (click)="cancelRide()"
+              *ngIf="canCancelRide(currentRide)"
+            >
+              Cancel Ride
+            </button>
+            
+            <div class="ride-progress" *ngIf="!canCancelRide(currentRide)">
+              <p class="progress-text">Ride in progress - enjoy your journey!</p>
+            </div>
+          </div>
+
+          <!-- Live Location Section -->
           <div class="live-location-section">
             <h3>Live Location</h3>
             <div class="map-placeholder">
-              <p>Map integration would go here</p>
+              <div class="map-content">
+                <span class="map-icon">🗺️</span>
+                <p>Real-time tracking coming soon</p>
+                <p class="map-note">You'll be able to track your driver's location in real-time</p>
+              </div>
             </div>
           </div>
         </div>
 
         <ng-template #noCurrentRide>
           <div class="no-ride-message">
+            <div class="no-ride-icon">🚗</div>
             <h2>No Current Ride</h2>
             <p>You don't have any ongoing rides at the moment.</p>
             <button class="book-ride-btn" (click)="setActiveTab('book')">Book a Ride</button>
@@ -269,41 +364,77 @@
     <!-- Ride History Tab -->
     <div *ngIf="activeTab === 'history'" class="tab-panel ride-history-panel">
       <div class="content-wrapper">
-        <h2>Ride History</h2>
-        <p class="subtitle">View your past rides</p>
+        <div class="section-header">
+          <h2>Ride History</h2>
+          <p class="subtitle">View your past rides and rate your experiences</p>
+        </div>
 
-        <div class="history-list" *ngIf="rideHistory.length > 0; else noHistory">
+        <div class="history-list" *ngIf="hasRideHistory; else noHistory">
           <div
             *ngFor="let ride of rideHistory"
             class="history-card"
+            [ngClass]="getStatusClass(ride.status)"
           >
             <div class="ride-route">
-              <h4>{{ ride.pickup }} → {{ ride.destination }}</h4>
+              <div class="route-header">
+                <h4>{{ ride.pickup }} → {{ ride.destination }}</h4>
+                <div class="status-badge" [ngClass]="ride.status">
+                  {{ getStatusDisplayText(ride.status) }}
+                </div>
+              </div>
+              
               <div class="ride-meta">
                 <span class="date">{{ formatDate(ride.date) }}</span>
-                <span class="driver">{{ ride.driverName }}</span>
+                <span class="driver" *ngIf="ride.driverName">{{ ride.driverName }}</span>
+                <span class="vehicle" *ngIf="ride.driver">{{ ride.driver.vehicle }}</span>
               </div>
+              
               <div class="ride-id">Ride ID: {{ ride.rideId }}</div>
             </div>
+            
             <div class="ride-summary">
               <div class="price">${{ ride.fare }}</div>
-              <div class="status-badge" [class]="ride.status">{{ ride.status }}</div>
-              <div class="rating" *ngIf="ride.status === 'completed'">
-                <span class="star">⭐</span>
-                <span>{{ ride.rating }}/5</span>
+              
+              <div class="rating-section" *ngIf="ride.status === 'completed'">
+                <div class="rating" *ngIf="ride.rating; else noRating">
+                  <span class="star">⭐</span>
+                  <span>{{ ride.rating }}/5</span>
+                </div>
+                <ng-template #noRating>
+                  <button 
+                    class="rate-btn" 
+                    (click)="rateRide(ride)"
+                    *ngIf="canRateRide(ride)"
+                  >
+                    Rate Ride
+                  </button>
+                </ng-template>
               </div>
-              <button class="view-details-btn" (click)="viewRideDetails(ride)">View Details</button>
+              
+              <button class="view-details-btn" (click)="viewRideDetails(ride)">
+                View Details
+              </button>
             </div>
           </div>
         </div>
 
         <ng-template #noHistory>
           <div class="no-history-message">
-            <p>No ride history available.</p>
+            <div class="no-history-icon">📋</div>
+            <h3>No Ride History</h3>
+            <p>You haven't taken any rides yet.</p>
             <button class="book-ride-btn" (click)="setActiveTab('book')">Book Your First Ride</button>
           </div>
         </ng-template>
       </div>
     </div>
   </main>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p>Loading...</p>
+    </div>
+  </div>
 </div>

@@ -1,14 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { debounceTime, distinctUntilChanged, switchMap, of, catchError } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, of, catchError, Subscription, interval } from 'rxjs';
 
 interface User {
   id: string;
   name: string;
   email: string;
+  phoneNumber: string;
 }
 
 interface Driver {
@@ -17,6 +18,7 @@ interface Driver {
   carModel: string;
   plateNumber: string;
   rating: number;
+  phone?: string;
 }
 
 interface AvailableRide {
@@ -37,6 +39,8 @@ interface CurrentRide {
   fare: number;
   pickup: string;
   destination: string;
+  otp?: string;
+  requestedAt?: string;
 }
 
 interface RideHistory {
@@ -48,6 +52,11 @@ interface RideHistory {
   fare: number;
   status: 'completed' | 'cancelled';
   rating?: number;
+  driver?: {
+    name: string;
+    vehicle: string;
+    plateNumber: string;
+  };
 }
 
 interface LocationSuggestion {
@@ -57,6 +66,15 @@ interface LocationSuggestion {
   place_id: string;
 }
 
+interface ApiResponse<T> {
+  message: string;
+  data?: T;
+  rides?: T;
+  currentRide?: T;
+  profile?: T;
+  ride?: T;
+}
+
 @Component({
   selector: 'app-rider-dashboard',
   standalone: true,
@@ -64,13 +82,14 @@ interface LocationSuggestion {
   templateUrl: './riderDashboard.component.html',
   styleUrls: ['./riderDashboard.component.scss']
 })
-export class RiderDashboardComponent implements OnInit {
+export class RiderDashboardComponent implements OnInit, OnDestroy {
   activeTab: 'book' | 'current' | 'history' = 'book';
   bookingForm: FormGroup;
   
   // State variables
   isSearching = false;
   isBooking = false;
+  isLoading = false;
   
   // Location autocomplete variables
   pickupSuggestions: LocationSuggestion[] = [];
@@ -86,17 +105,23 @@ export class RiderDashboardComponent implements OnInit {
   
   private readonly LOCATIONIQ_API_KEY = 'pk.33a6b675d1b70adc3f79b26403bad615';
   private readonly LOCATIONIQ_BASE_URL = 'https://api.locationiq.com/v1/autocomplete';
+  private readonly API_URL = 'http://localhost:3000/api';
   
   // Data
   currentUser: User = {
-    id: 'user1',
-    name: 'Alex',
-    email: 'alex@example.com'
+    id: '',
+    name: '',
+    email: '',
+    phoneNumber: ''
   };
 
   availableRides: AvailableRide[] = [];
   currentRide: CurrentRide | null = null;
   rideHistory: RideHistory[] = [];
+
+  // Subscriptions for cleanup
+  private subscriptions: Subscription[] = [];
+  private currentRidePolling: Subscription | null = null;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -112,10 +137,108 @@ export class RiderDashboardComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadMockData();
+    this.loadUserProfile();
     this.loadCurrentRide();
     this.loadRideHistory();
     this.setupLocationAutocomplete();
+    this.startCurrentRidePolling();
+  }
+
+  ngOnDestroy(): void {
+    // Clean up subscriptions
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+    if (this.currentRidePolling) {
+      this.currentRidePolling.unsubscribe();
+    }
+  }
+
+  /**
+   * Load user profile from localStorage and API
+   */
+  private loadUserProfile(): void {
+    const userId = localStorage.getItem('userId');
+    const userName = localStorage.getItem('userName');
+    const userEmail = localStorage.getItem('userEmail');
+
+    if (userId && userName && userEmail) {
+      this.currentUser = {
+        id: userId,
+        name: userName,
+        email: userEmail,
+        phoneNumber: '' // Will be loaded from API if needed
+      };
+    } else {
+      // Redirect to login if no user data
+      this.router.navigate(['/sign-in']);
+      return;
+    }
+
+    // Optionally load full profile from API
+    this.loadFullProfile();
+  }
+
+  /**
+   * Load full user profile from API
+   */
+  private loadFullProfile(): void {
+    const sub = this.http.get<ApiResponse<any>>(`${this.API_URL}/rider/profile`).subscribe({
+      next: (response) => {
+        if (response.profile) {
+          this.currentUser.phoneNumber = response.profile.phoneNumber || '';
+        }
+      },
+      error: (error) => {
+        console.warn('Could not load full profile:', error);
+      }
+    });
+    this.subscriptions.push(sub);
+  }
+
+  /**
+   * Load current ride from API
+   */
+  private loadCurrentRide(): void {
+    const sub = this.http.get<ApiResponse<CurrentRide>>(`${this.API_URL}/rider/rides/current`).subscribe({
+      next: (response) => {
+        this.currentRide = response.currentRide || null;
+        if (this.currentRide && ['requested', 'accepted', 'driver_on_way', 'rider_picked_up'].includes(this.currentRide.status)) {
+          this.setActiveTab('current');
+        }
+      },
+      error: (error) => {
+        console.error('Error loading current ride:', error);
+        this.currentRide = null;
+      }
+    });
+    this.subscriptions.push(sub);
+  }
+
+  /**
+   * Load ride history from API
+   */
+  private loadRideHistory(): void {
+    const sub = this.http.get<ApiResponse<RideHistory[]>>(`${this.API_URL}/rider/rides/history?limit=20`).subscribe({
+      next: (response) => {
+        this.rideHistory = (response.rides as RideHistory[]) || [];
+      },
+      error: (error) => {
+        console.error('Error loading ride history:', error);
+        this.rideHistory = [];
+      }
+    });
+    this.subscriptions.push(sub);
+  }
+
+  /**
+   * Start polling for current ride updates
+   */
+  private startCurrentRidePolling(): void {
+    // Poll every 10 seconds for current ride updates
+    this.currentRidePolling = interval(10000).subscribe(() => {
+      if (this.currentRide && this.activeTab === 'current') {
+        this.loadCurrentRide();
+      }
+    });
   }
 
   /**
@@ -123,7 +246,7 @@ export class RiderDashboardComponent implements OnInit {
    */
   private setupLocationAutocomplete(): void {
     // Pickup location autocomplete
-    this.bookingForm.get('pickupLocation')?.valueChanges.pipe(
+    const pickupSub = this.bookingForm.get('pickupLocation')?.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(query => {
@@ -133,7 +256,6 @@ export class RiderDashboardComponent implements OnInit {
           return of([]);
         }
         
-        // Don't search if user has selected a suggestion
         if (this.selectedPickupLocation && query === this.selectedPickupLocation.display_name) {
           return of([]);
         }
@@ -153,7 +275,7 @@ export class RiderDashboardComponent implements OnInit {
     });
 
     // Destination autocomplete
-    this.bookingForm.get('destination')?.valueChanges.pipe(
+    const destinationSub = this.bookingForm.get('destination')?.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(query => {
@@ -163,7 +285,6 @@ export class RiderDashboardComponent implements OnInit {
           return of([]);
         }
         
-        // Don't search if user has selected a suggestion
         if (this.selectedDestinationLocation && query === this.selectedDestinationLocation.display_name) {
           return of([]);
         }
@@ -181,6 +302,9 @@ export class RiderDashboardComponent implements OnInit {
       this.showDestinationSuggestions = suggestions.length > 0;
       this.isLoadingDestinationSuggestions = false;
     });
+
+    if (pickupSub) this.subscriptions.push(pickupSub);
+    if (destinationSub) this.subscriptions.push(destinationSub);
   }
 
   /**
@@ -242,7 +366,6 @@ export class RiderDashboardComponent implements OnInit {
    * Hide pickup suggestions when clicking outside
    */
   hidePickupSuggestions(): void {
-    // Use setTimeout to allow click events on suggestions to fire first
     setTimeout(() => {
       this.showPickupSuggestions = false;
     }, 200);
@@ -252,7 +375,6 @@ export class RiderDashboardComponent implements OnInit {
    * Hide destination suggestions when clicking outside
    */
   hideDestinationSuggestions(): void {
-    // Use setTimeout to allow click events on suggestions to fire first
     setTimeout(() => {
       this.showDestinationSuggestions = false;
     }, 200);
@@ -267,7 +389,6 @@ export class RiderDashboardComponent implements OnInit {
       
       const suggestions = type === 'pickup' ? this.pickupSuggestions : this.destinationSuggestions;
       if (suggestions.length > 0) {
-        // Select the first suggestion
         if (type === 'pickup') {
           this.selectPickupLocation(suggestions[0]);
         } else {
@@ -275,7 +396,6 @@ export class RiderDashboardComponent implements OnInit {
         }
       }
     } else if (event.key === 'Escape') {
-      // Hide suggestions on Escape
       if (type === 'pickup') {
         this.showPickupSuggestions = false;
       } else {
@@ -305,104 +425,17 @@ export class RiderDashboardComponent implements OnInit {
   }
 
   /**
-   * Load mock data for available rides
-   */
-  private loadMockData(): void {
-    this.availableRides = [
-      {
-        id: 'ride1',
-        driverName: 'Rajesh Kumar',
-        carModel: 'Honda City',
-        plateNumber: 'MH 01 AB 1234',
-        rating: 4.8,
-        eta: '2 mins away',
-        price: 12
-      },
-      {
-        id: 'ride2',
-        driverName: 'Suresh Sharma',
-        carModel: 'Maruti Swift',
-        plateNumber: 'MH 02 CD 5678',
-        rating: 4.6,
-        eta: '4 mins away',
-        price: 11
-      },
-      {
-        id: 'ride3',
-        driverName: 'Amit Patel',
-        carModel: 'Hyundai i20',
-        plateNumber: 'MH 03 EF 9012',
-        rating: 4.9,
-        eta: '6 mins away',
-        price: 13
-      }
-    ];
-  }
-
-  /**
-   * Load current ride data
-   */
-  private loadCurrentRide(): void {
-    // Mock current ride data
-    this.currentRide = {
-      rideId: 'R001',
-      status: 'Driver On The Way',
-      driver: {
-        id: 'driver1',
-        name: 'John Doe',
-        carModel: 'Honda City',
-        plateNumber: 'MH 01 AB 1234',
-        rating: 4.8
-      },
-      eta: '5 mins',
-      fare: 12,
-      pickup: 'Pickup Location',
-      destination: 'Destination'
-    };
-  }
-
-  /**
-   * Load ride history data
-   */
-  private loadRideHistory(): void {
-    this.rideHistory = [
-      {
-        rideId: 'R001',
-        pickup: 'Bandra West',
-        destination: 'Andheri East',
-        date: '2024-01-15',
-        driverName: 'Rajesh Kumar',
-        fare: 18,
-        status: 'completed',
-        rating: 5
-      },
-      {
-        rideId: 'R002',
-        pickup: 'Powai',
-        destination: 'BKC',
-        date: '2024-01-14',
-        driverName: 'Suresh Sharma',
-        fare: 22,
-        status: 'completed',
-        rating: 4
-      },
-      {
-        rideId: 'R003',
-        pickup: 'Colaba',
-        destination: 'Marine Drive',
-        date: '2024-01-13',
-        driverName: '',
-        fare: 9,
-        status: 'cancelled'
-      }
-    ];
-  }
-
-  /**
    * Set active tab
    */
   setActiveTab(tab: 'book' | 'current' | 'history'): void {
     this.activeTab = tab;
+    
+    // Refresh data when switching to tabs
+    if (tab === 'current') {
+      this.loadCurrentRide();
+    } else if (tab === 'history') {
+      this.loadRideHistory();
+    }
   }
 
   /**
@@ -413,7 +446,6 @@ export class RiderDashboardComponent implements OnInit {
       return;
     }
 
-    // Ensure both locations are selected
     if (!this.selectedPickupLocation || !this.selectedDestinationLocation) {
       alert('Please select valid pickup and destination locations from the suggestions.');
       return;
@@ -421,18 +453,36 @@ export class RiderDashboardComponent implements OnInit {
 
     this.isSearching = true;
 
-    // Simulate API call
-    setTimeout(() => {
-      this.isSearching = false;
-      // Mock data is already loaded
-      console.log('Rides found:', this.availableRides);
-      console.log('Pickup coordinates:', this.selectedPickupLocation?.lat, this.selectedPickupLocation?.lon);
-      console.log('Destination coordinates:', this.selectedDestinationLocation?.lat, this.selectedDestinationLocation?.lon);
-    }, 2000);
+    const rideData = {
+      pickupLocation: this.selectedPickupLocation.display_name,
+      destination: this.selectedDestinationLocation.display_name,
+      rideType: this.bookingForm.get('rideType')?.value,
+      when: this.bookingForm.get('when')?.value
+    };
+
+    const sub = this.http.post<ApiResponse<any>>(`${this.API_URL}/rider/rides/request`, rideData).subscribe({
+      next: (response) => {
+        this.isSearching = false;
+        if (response.ride || response.data) {
+          // Ride requested successfully, switch to current ride tab
+          this.loadCurrentRide();
+          this.setActiveTab('current');
+          this.resetBookingForm();
+          alert('Ride requested successfully! Looking for available drivers...');
+        }
+      },
+      error: (error) => {
+        this.isSearching = false;
+        console.error('Error requesting ride:', error);
+        const errorMessage = error.error?.message || 'Failed to request ride. Please try again.';
+        alert(errorMessage);
+      }
+    });
+    this.subscriptions.push(sub);
   }
 
   /**
-   * Book a ride
+   * Book a specific ride (if there are multiple options)
    */
   bookRide(ride: AvailableRide): void {
     if (this.isBooking) {
@@ -441,36 +491,13 @@ export class RiderDashboardComponent implements OnInit {
 
     this.isBooking = true;
     
-    console.log('Booking ride:', ride);
-    
-    // Simulate booking API call
+    // In a real implementation, this would accept a specific driver's offer
     setTimeout(() => {
       this.isBooking = false;
-      
-      // Create current ride from booked ride
-      this.currentRide = {
-        rideId: `R${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-        status: 'Driver On The Way',
-        driver: {
-          id: ride.id,
-          name: ride.driverName,
-          carModel: ride.carModel,
-          plateNumber: ride.plateNumber,
-          rating: ride.rating
-        },
-        eta: ride.eta,
-        fare: ride.price,
-        pickup: this.selectedPickupLocation?.display_name || '',
-        destination: this.selectedDestinationLocation?.display_name || ''
-      };
-
-      // Switch to current ride tab
+      this.loadCurrentRide();
       this.setActiveTab('current');
-      
-      // Clear available rides and reset form
       this.availableRides = [];
       this.resetBookingForm();
-      
       alert('Ride booked successfully!');
     }, 1500);
   }
@@ -485,19 +512,21 @@ export class RiderDashboardComponent implements OnInit {
 
     const confirmCancel = confirm('Are you sure you want to cancel this ride?');
     if (confirmCancel) {
-      // Add to history as cancelled
-      this.rideHistory.unshift({
-        rideId: this.currentRide.rideId,
-        pickup: this.currentRide.pickup,
-        destination: this.currentRide.destination,
-        date: new Date().toISOString().split('T')[0],
-        driverName: this.currentRide.driver.name,
-        fare: this.currentRide.fare,
-        status: 'cancelled'
+      const sub = this.http.post<ApiResponse<any>>(`${this.API_URL}/rider/rides/${this.currentRide.rideId}/cancel`, {
+        reason: 'Cancelled by rider'
+      }).subscribe({
+        next: (response) => {
+          this.currentRide = null;
+          this.loadRideHistory(); // Refresh history to show cancelled ride
+          alert('Ride cancelled successfully!');
+        },
+        error: (error) => {
+          console.error('Error cancelling ride:', error);
+          const errorMessage = error.error?.message || 'Failed to cancel ride. Please try again.';
+          alert(errorMessage);
+        }
       });
-
-      this.currentRide = null;
-      alert('Ride cancelled successfully!');
+      this.subscriptions.push(sub);
     }
   }
 
@@ -505,9 +534,9 @@ export class RiderDashboardComponent implements OnInit {
    * Call driver
    */
   callDriver(): void {
-    if (this.currentRide) {
+    if (this.currentRide && this.currentRide.driver) {
       alert(`Calling ${this.currentRide.driver.name}...`);
-      // Here you would implement actual calling functionality
+      // In a real app, this would initiate a phone call
     }
   }
 
@@ -515,9 +544,9 @@ export class RiderDashboardComponent implements OnInit {
    * Message driver
    */
   messageDriver(): void {
-    if (this.currentRide) {
+    if (this.currentRide && this.currentRide.driver) {
       alert(`Opening chat with ${this.currentRide.driver.name}...`);
-      // Here you would implement messaging functionality
+      // In a real app, this would open a messaging interface
     }
   }
 
@@ -526,22 +555,54 @@ export class RiderDashboardComponent implements OnInit {
    */
   viewRideDetails(ride: RideHistory): void {
     alert(`Viewing details for ride ${ride.rideId}`);
-    // invoice like??
+    // In a real app, this would navigate to a detailed view or open a modal
+  }
+
+  /**
+   * Rate a completed ride
+   */
+  rateRide(ride: RideHistory): void {
+    if (ride.status !== 'completed') {
+      return;
+    }
+
+    const rating = prompt('Rate your driver (1-5 stars):');
+    if (rating && parseInt(rating) >= 1 && parseInt(rating) <= 5) {
+      const comment = prompt('Add a comment (optional):') || '';
+      
+      const sub = this.http.post<ApiResponse<any>>(`${this.API_URL}/rider/rides/${ride.rideId}/rate`, {
+        rating: parseInt(rating),
+        comment: comment
+      }).subscribe({
+        next: (response) => {
+          ride.rating = parseInt(rating);
+          alert('Thank you for your feedback!');
+        },
+        error: (error) => {
+          console.error('Error submitting rating:', error);
+          alert('Failed to submit rating. Please try again.');
+        }
+      });
+      this.subscriptions.push(sub);
+    }
   }
 
   /**
    * Logout user
    */
   logout(): void {
-    // May need to add a confirm
-    localStorage.removeItem('userToken');
-    this.router.navigate(['/register']);
-    //const confirmLogout = confirm('Are you sure you want to logout?');
-    //if (confirmLogout) {
-      // Clear any stored data
+    const confirmLogout = confirm('Are you sure you want to logout?');
+    if (confirmLogout) {
+      // Clear stored data
+      localStorage.removeItem('userToken');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userType');
       
-      // Navigate to login page
-    //this.router.navigate(['/signin']);
+      // Navigate to home page
+      this.router.navigate(['/register']);
+    }
   }
 
   /**
@@ -608,5 +669,76 @@ export class RiderDashboardComponent implements OnInit {
       month: 'short',
       day: 'numeric'
     });
+  }
+
+  /**
+   * Get status display text
+   */
+  getStatusDisplayText(status: string): string {
+    const statusMap: { [key: string]: string } = {
+      'requested': 'Looking for Driver',
+      'accepted': 'Driver Assigned',
+      'driver_on_way': 'Driver On The Way',
+      'rider_picked_up': 'In Progress',
+      'completed': 'Completed',
+      'cancelled': 'Cancelled'
+    };
+    return statusMap[status] || status;
+  }
+
+  /**
+   * Get status CSS class
+   */
+  getStatusClass(status: string): string {
+    const statusClasses: { [key: string]: string } = {
+      'requested': 'status-requested',
+      'accepted': 'status-accepted',
+      'driver_on_way': 'status-on-way',
+      'rider_picked_up': 'status-in-progress',
+      'completed': 'status-completed',
+      'cancelled': 'status-cancelled'
+    };
+    return statusClasses[status] || '';
+  }
+
+  /**
+   * Check if ride can be cancelled
+   */
+  canCancelRide(ride: CurrentRide | null): boolean {
+    if (!ride) return false;
+    return ['requested', 'accepted', 'driver_on_way'].includes(ride.status);
+  }
+
+  /**
+   * Check if ride can be rated
+   */
+  canRateRide(ride: RideHistory): boolean {
+    return ride.status === 'completed' && !ride.rating;
+  }
+
+  /**
+   * Refresh current data
+   */
+  refreshData(): void {
+    this.isLoading = true;
+    
+    if (this.activeTab === 'current') {
+      this.loadCurrentRide();
+    } else if (this.activeTab === 'history') {
+      const sub = this.http.get<ApiResponse<RideHistory[]>>(`${this.API_URL}/rider/rides/history?limit=20`).subscribe({
+        next: (response) => {
+          this.rideHistory = (response.rides as RideHistory[]) || [];
+        },
+        error: (error) => {
+          console.error('Error loading ride history:', error);
+        }
+      });
+      this.subscriptions.push(sub);
+    }
+    
+    // Simulate loading time
+    setTimeout(() => {
+      this.isLoading = false;
+    }, 1000);
   }
 }
