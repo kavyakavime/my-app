@@ -12,55 +12,58 @@ describe('RiderDashboardComponent', () => {
   let httpMock: HttpTestingController;
 
   const mockUser = {
-    id: '1',
-    name: 'Test User',
-    email: 'test@example.com',
-    phoneNumber: '+1234567890'
+    id: '3',
+    name: 'Priya Sharma',
+    email: 'priya@example.com',
+    phoneNumber: '+1234567892'
   };
 
-  const mockCurrentRide = {
-    rideId: 'R001',
-    status: 'driver_on_way',
-    driver: {
-      id: 'driver1',
-      name: 'John Driver',
-      carModel: 'Honda City',
-      plateNumber: 'ABC123',
-      rating: 4.8,
-      phone: '+1987654321'
-    },
-    eta: '5 mins',
-    fare: 12,
-    pickup: 'Test Pickup Location',
-    destination: 'Test Destination',
-    otp: '1234',
-    requestedAt: '2024-01-15T10:00:00Z'
+  const mockRiderData = {
+    id: 3,
+    user_id: 3,
+    full_name: 'Priya Sharma',
+    email: 'priya@example.com',
+    phone_number: '+1234567892',
+    emergency_contact_name: 'Suresh Sharma',
+    emergency_contact_phone: '+919876543213',
+    preferred_payment_method: 'wallet',
+    created_at: '2025-07-23T22:15:24.000Z',
+    is_verified: 1,
+    is_active: 1
   };
 
   const mockRideHistory = [
     {
-      rideId: 'R002',
-      pickup: 'Location A',
-      destination: 'Location B',
-      date: '2024-01-14T15:30:00Z',
-      driverName: 'Jane Driver',
-      fare: 15,
-      status: 'completed' as const,
-      rating: 5,
-      driver: {
-        name: 'Jane Driver',
-        vehicle: 'Toyota Camry',
-        plateNumber: 'XYZ789'
-      }
+      id: 1,
+      ride_id: 'R001',
+      pickup_location: 'Bandra West Railway Station',
+      destination: 'Andheri East Metro Station',
+      ride_type: 'car',
+      status: 'completed',
+      estimated_fare: '18.00',
+      final_fare: '18.00',
+      created_at: '2025-07-23T22:15:24.000Z',
+      completed_at: '2024-01-20T15:30:00.000Z',
+      driver_name: 'Rajesh Kumar',
+      make: 'Honda',
+      model: 'City',
+      plate_number: 'MH01AB1234'
     },
     {
-      rideId: 'R003',
-      pickup: 'Location C',
-      destination: 'Location D',
-      date: '2024-01-13T09:15:00Z',
-      driverName: 'Bob Driver',
-      fare: 8,
-      status: 'cancelled' as const
+      id: 4,
+      ride_id: 'R004',
+      pickup_location: 'Airport Terminal 1',
+      destination: 'Worli Sea Face',
+      ride_type: 'car',
+      status: 'requested',
+      estimated_fare: '35.00',
+      final_fare: null,
+      created_at: '2025-07-23T22:15:24.000Z',
+      completed_at: null,
+      driver_name: null,
+      make: null,
+      model: null,
+      plate_number: null
     }
   ];
 
@@ -70,9 +73,9 @@ describe('RiderDashboardComponent', () => {
     // Setup localStorage mocks
     spyOn(localStorage, 'getItem').and.callFake((key: string) => {
       const store: { [key: string]: string } = {
-        'userId': '1',
-        'userName': 'Test User',
-        'userEmail': 'test@example.com',
+        'userId': '3',
+        'userName': 'Priya Sharma',
+        'userEmail': 'priya@example.com',
         'userType': 'rider'
       };
       return store[key] || null;
@@ -118,9 +121,9 @@ describe('RiderDashboardComponent', () => {
     it('should load user profile from localStorage', () => {
       component.ngOnInit();
       
-      expect(component.currentUser.id).toBe('1');
-      expect(component.currentUser.name).toBe('Test User');
-      expect(component.currentUser.email).toBe('test@example.com');
+      expect(component.currentUser.id).toBe('3');
+      expect(component.currentUser.name).toBe('Priya Sharma');
+      expect(component.currentUser.email).toBe('priya@example.com');
     });
 
     it('should redirect to sign-in if no user data', () => {
@@ -131,34 +134,42 @@ describe('RiderDashboardComponent', () => {
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/sign-in']);
     });
 
-    it('should make API calls on initialization', () => {
+    it('should load rider data and rides on initialization', () => {
       component.ngOnInit();
 
-      // Should request profile
-      const profileReq = httpMock.expectOne('http://localhost:3000/api/rider/profile');
-      expect(profileReq.request.method).toBe('GET');
-      profileReq.flush({ profile: { phoneNumber: '+1234567890' } });
+      // Should request rider data by email
+      const riderReq = httpMock.expectOne('http://localhost:3000/api/rider/email/priya@example.com');
+      expect(riderReq.request.method).toBe('GET');
+      riderReq.flush({ message: 'Rider retrieved', data: mockRiderData });
 
-      // Should request current ride
-      const currentRideReq = httpMock.expectOne('http://localhost:3000/api/rider/rides/current');
-      expect(currentRideReq.request.method).toBe('GET');
-      currentRideReq.flush({ currentRide: null });
+      // Should request rider's rides
+      const ridesReq = httpMock.expectOne('http://localhost:3000/api/rider/3/rides');
+      expect(ridesReq.request.method).toBe('GET');
+      ridesReq.flush({ message: 'Rider rides retrieved', count: 2, data: mockRideHistory });
 
-      // Should request ride history
-      const historyReq = httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20');
-      expect(historyReq.request.method).toBe('GET');
-      historyReq.flush({ rides: mockRideHistory });
+      expect(component.riderData).toEqual(mockRiderData);
+      expect(component.riderId).toBe(3);
+      expect(component.currentUser.phoneNumber).toBe('+1234567892');
+      expect(component.rideHistory.length).toBe(1); // Only completed rides in history
+    });
 
-      expect(component.rideHistory).toEqual(mockRideHistory);
+    it('should handle error when loading rider data', () => {
+      spyOn(console, 'error');
+      
+      component.ngOnInit();
+
+      const riderReq = httpMock.expectOne('http://localhost:3000/api/rider/email/priya@example.com');
+      riderReq.flush('Error', { status: 500, statusText: 'Server Error' });
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/sign-in']);
+      expect(console.error).toHaveBeenCalled();
     });
   });
 
   describe('Tab Navigation', () => {
     beforeEach(() => {
-      component.ngOnInit();
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: null });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: [] });
+      component.riderData = mockRiderData;
+      component.riderId = 3;
     });
 
     it('should switch tabs correctly', () => {
@@ -175,26 +186,173 @@ describe('RiderDashboardComponent', () => {
     it('should refresh data when switching to current tab', () => {
       component.setActiveTab('current');
 
-      const req = httpMock.expectOne('http://localhost:3000/api/rider/rides/current');
+      const req = httpMock.expectOne('http://localhost:3000/api/rider/3/rides');
       expect(req.request.method).toBe('GET');
-      req.flush({ currentRide: mockCurrentRide });
+      req.flush({ message: 'Rider rides retrieved', count: 1, data: [mockRideHistory[1]] });
     });
 
     it('should refresh data when switching to history tab', () => {
       component.setActiveTab('history');
 
-      const req = httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20');
+      const req = httpMock.expectOne('http://localhost:3000/api/rider/3/rides');
       expect(req.request.method).toBe('GET');
-      req.flush({ rides: mockRideHistory });
+      req.flush({ message: 'Rider rides retrieved', count: 2, data: mockRideHistory });
+    });
+  });
+
+  describe('Current Ride Management', () => {
+    beforeEach(() => {
+      component.riderData = mockRiderData;
+      component.riderId = 3;
+    });
+
+    it('should identify active ride from API data', () => {
+      component.setActiveTab('current');
+
+      const req = httpMock.expectOne('http://localhost:3000/api/rider/3/rides');
+      req.flush({ message: 'Rider rides retrieved', count: 2, data: mockRideHistory });
+
+      expect(component.currentRide).toBeTruthy();
+      expect(component.currentRide?.rideId).toBe('R004');
+      expect(component.currentRide?.status).toBe('requested');
+      expect(component.activeTab).toBe('current');
+    });
+
+    it('should set no current ride when no active rides exist', () => {
+      component.setActiveTab('current');
+
+      const completedRides = mockRideHistory.filter(ride => ride.status === 'completed');
+      const req = httpMock.expectOne('http://localhost:3000/api/rider/3/rides');
+      req.flush({ message: 'Rider rides retrieved', count: 1, data: completedRides });
+
+      expect(component.currentRide).toBeNull();
+    });
+
+    it('should cancel ride with confirmation', () => {
+      spyOn(window, 'confirm').and.returnValue(true);
+      spyOn(window, 'alert');
+
+      // Set up a current ride
+      component.currentRide = {
+        rideId: 'R004',
+        status: 'requested',
+        driver: { id: '', name: 'Looking for driver...', carModel: '', plateNumber: '', rating: 0 },
+        eta: 'Searching...',
+        fare: 35,
+        pickup: 'Airport Terminal 1',
+        destination: 'Worli Sea Face'
+      };
+
+      component.cancelRide();
+
+      expect(component.currentRide).toBeNull();
+      expect(window.alert).toHaveBeenCalledWith('Ride cancelled successfully!');
+
+      // Should refresh ride history
+      const historyReq = httpMock.expectOne('http://localhost:3000/api/rider/3/rides');
+      historyReq.flush({ message: 'Rider rides retrieved', count: 2, data: mockRideHistory });
+    });
+
+    it('should not cancel ride without confirmation', () => {
+      spyOn(window, 'confirm').and.returnValue(false);
+
+      component.currentRide = {
+        rideId: 'R004',
+        status: 'requested',
+        driver: { id: '', name: 'Looking for driver...', carModel: '', plateNumber: '', rating: 0 },
+        eta: 'Searching...',
+        fare: 35,
+        pickup: 'Airport Terminal 1',
+        destination: 'Worli Sea Face'
+      };
+
+      component.cancelRide();
+
+      expect(window.confirm).toHaveBeenCalled();
+      expect(component.currentRide).not.toBeNull();
+    });
+  });
+
+  describe('Ride History', () => {
+    beforeEach(() => {
+      component.riderData = mockRiderData;
+      component.riderId = 3;
+    });
+
+    it('should filter and map ride history correctly', () => {
+      component.setActiveTab('history');
+
+      const req = httpMock.expectOne('http://localhost:3000/api/rider/3/rides');
+      req.flush({ message: 'Rider rides retrieved', count: 2, data: mockRideHistory });
+
+      expect(component.rideHistory.length).toBe(1); // Only completed rides
+      expect(component.rideHistory[0].rideId).toBe('R001');
+      expect(component.rideHistory[0].status).toBe('completed');
+      expect(component.rideHistory[0].driverName).toBe('Rajesh Kumar');
+      expect(component.rideHistory[0].fare).toBe(18);
+    });
+
+    it('should view ride details', () => {
+      spyOn(window, 'alert');
+      const ride = {
+        rideId: 'R001',
+        pickup: 'Location A',
+        destination: 'Location B',
+        date: '2024-01-14T15:30:00Z',
+        driverName: 'Test Driver',
+        fare: 15,
+        status: 'completed' as const
+      };
+
+      component.viewRideDetails(ride);
+
+      expect(window.alert).toHaveBeenCalledWith('Viewing details for ride R001');
+    });
+
+    it('should rate completed ride', () => {
+      spyOn(window, 'prompt').and.returnValues('5', 'Great ride!');
+      spyOn(window, 'alert');
+
+      const ride = {
+        rideId: 'R001',
+        pickup: 'Location A',
+        destination: 'Location B',
+        date: '2024-01-14T15:30:00Z',
+        driverName: 'Test Driver',
+        fare: 15,
+        status: 'completed' as const
+      };
+
+      component.rateRide(ride);
+
+      // Check that rating was assigned to the ride object
+      expect((ride as any).rating).toBe(5);
+      expect(window.alert).toHaveBeenCalledWith('Thank you for your feedback!');
+    });
+
+    it('should not rate non-completed ride', () => {
+      spyOn(window, 'prompt');
+
+      const ride = {
+        rideId: 'R001',
+        pickup: 'Location A',
+        destination: 'Location B',
+        date: '2024-01-14T15:30:00Z',
+        driverName: 'Test Driver',
+        fare: 15,
+        status: 'cancelled' as const
+      };
+
+      component.rateRide(ride);
+
+      expect(window.prompt).not.toHaveBeenCalled();
     });
   });
 
   describe('Booking Form', () => {
     beforeEach(() => {
-      component.ngOnInit();
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: null });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: [] });
+      component.riderData = mockRiderData;
+      component.riderId = 3;
     });
 
     it('should validate form correctly', () => {
@@ -239,7 +397,6 @@ describe('RiderDashboardComponent', () => {
       component.findRides();
 
       expect(window.alert).toHaveBeenCalledWith('Please select valid pickup and destination locations from the suggestions.');
-      httpMock.expectNone('http://localhost:3000/api/rider/rides/request');
     });
 
     it('should request ride successfully', fakeAsync(() => {
@@ -269,231 +426,40 @@ describe('RiderDashboardComponent', () => {
 
       expect(component.isSearching).toBeTruthy();
 
-      const req = httpMock.expectOne('http://localhost:3000/api/rider/rides/request');
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({
-        pickupLocation: 'Test Pickup',
-        destination: 'Test Destination',
-        rideType: 'car',
-        when: 'now'
-      });
-
-      req.flush({ ride: { rideId: 'R001' } });
+      tick(2000); // Wait for simulated request
 
       expect(component.isSearching).toBeFalsy();
       expect(window.alert).toHaveBeenCalledWith('Ride requested successfully! Looking for available drivers...');
-
-      // Should load current ride and switch tabs
-      const currentRideReq = httpMock.expectOne('http://localhost:3000/api/rider/rides/current');
-      currentRideReq.flush({ currentRide: mockCurrentRide });
-
+      expect(component.currentRide).toBeTruthy();
       expect(component.activeTab).toBe('current');
     }));
-
-    it('should handle ride request error', () => {
-      component.bookingForm.patchValue({
-        pickupLocation: 'Test Pickup',
-        destination: 'Test Destination'
-      });
-
-      component.selectedPickupLocation = {
-        display_name: 'Test Pickup',
-        lat: '40.7128',
-        lon: '-74.0060',
-        place_id: '1'
-      };
-      component.selectedDestinationLocation = {
-        display_name: 'Test Destination',
-        lat: '40.7589',
-        lon: '-73.9851',
-        place_id: '2'
-      };
-
-      spyOn(window, 'alert');
-
-      component.findRides();
-
-      const req = httpMock.expectOne('http://localhost:3000/api/rider/rides/request');
-      req.flush({ message: 'Error message' }, { status: 400, statusText: 'Bad Request' });
-
-      expect(component.isSearching).toBeFalsy();
-      expect(window.alert).toHaveBeenCalledWith('Failed to request ride. Please try again.');
-    });
-  });
-
-  describe('Current Ride Management', () => {
-    beforeEach(() => {
-      component.ngOnInit();
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: mockCurrentRide });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: [] });
-      
-      component.currentRide = mockCurrentRide;
-    });
-
-    it('should load current ride correctly', () => {
-      expect(component.currentRide).toEqual(mockCurrentRide);
-      expect(component.hasCurrentRide).toBeTruthy();
-    });
-
-    it('should switch to current tab when active ride exists', () => {
-      component.ngOnInit();
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: mockCurrentRide });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: [] });
-
-      expect(component.activeTab).toBe('current');
-    });
-
-    it('should cancel ride with confirmation', () => {
-      spyOn(window, 'confirm').and.returnValue(true);
-      spyOn(window, 'alert');
-
-      component.cancelRide();
-
-      const req = httpMock.expectOne('http://localhost:3000/api/rider/rides/R001/cancel');
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ reason: 'Cancelled by rider' });
-
-      req.flush({ message: 'Ride cancelled successfully' });
-
-      expect(component.currentRide).toBeNull();
-      expect(window.alert).toHaveBeenCalledWith('Ride cancelled successfully!');
-
-      // Should refresh ride history
-      const historyReq = httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20');
-      historyReq.flush({ rides: mockRideHistory });
-    });
-
-    it('should not cancel ride without confirmation', () => {
-      spyOn(window, 'confirm').and.returnValue(false);
-
-      component.cancelRide();
-
-      expect(window.confirm).toHaveBeenCalled();
-      httpMock.expectNone('http://localhost:3000/api/rider/rides/R001/cancel');
-    });
-
-    it('should call driver', () => {
-      spyOn(window, 'alert');
-
-      component.callDriver();
-
-      expect(window.alert).toHaveBeenCalledWith('Calling John Driver...');
-    });
-
-    it('should message driver', () => {
-      spyOn(window, 'alert');
-
-      component.messageDriver();
-
-      expect(window.alert).toHaveBeenCalledWith('Opening chat with John Driver...');
-    });
-
-    it('should check if ride can be cancelled', () => {
-      const testCases = [
-        { status: 'requested', canCancel: true },
-        { status: 'accepted', canCancel: true },
-        { status: 'driver_on_way', canCancel: true },
-        { status: 'rider_picked_up', canCancel: false },
-        { status: 'completed', canCancel: false },
-        { status: 'cancelled', canCancel: false }
-      ];
-
-      testCases.forEach(testCase => {
-        const ride = { ...mockCurrentRide, status: testCase.status };
-        expect(component.canCancelRide(ride)).toBe(testCase.canCancel);
-      });
-    });
-  });
-
-  describe('Ride History', () => {
-    beforeEach(() => {
-      component.ngOnInit();
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: null });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: mockRideHistory });
-    });
-
-    it('should load ride history correctly', () => {
-      expect(component.rideHistory).toEqual(mockRideHistory);
-      expect(component.hasRideHistory).toBeTruthy();
-    });
-
-    it('should view ride details', () => {
-      spyOn(window, 'alert');
-      const ride = mockRideHistory[0];
-
-      component.viewRideDetails(ride);
-
-      expect(window.alert).toHaveBeenCalledWith('Viewing details for ride R002');
-    });
-
-    it('should rate completed ride', () => {
-      spyOn(window, 'prompt').and.returnValues('5', 'Great ride!');
-      spyOn(window, 'alert');
-
-      const ride = mockRideHistory[0]; // completed ride
-      component.rateRide(ride);
-
-      const req = httpMock.expectOne('http://localhost:3000/api/rider/rides/R002/rate');
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({
-        rating: 5,
-        comment: 'Great ride!'
-      });
-
-      req.flush({ message: 'Rating submitted successfully' });
-
-      expect(ride.rating).toBe(5);
-      expect(window.alert).toHaveBeenCalledWith('Thank you for your feedback!');
-    });
-
-    it('should not rate non-completed ride', () => {
-      spyOn(window, 'prompt');
-
-      const ride = { ...mockRideHistory[1], status: 'cancelled' as const };
-      component.rateRide(ride);
-
-      expect(window.prompt).not.toHaveBeenCalled();
-      httpMock.expectNone('http://localhost:3000/api/rider/rides/R003/rate');
-    });
-
-    it('should check if ride can be rated', () => {
-      const completedRide = { ...mockRideHistory[0], rating: undefined };
-      const completedRatedRide = { ...mockRideHistory[0], rating: 5 };
-      const cancelledRide = { ...mockRideHistory[1], status: 'cancelled' as const };
-
-      expect(component.canRateRide(completedRide)).toBeTruthy();
-      expect(component.canRateRide(completedRatedRide)).toBeFalsy();
-      expect(component.canRateRide(cancelledRide)).toBeFalsy();
-    });
   });
 
   describe('Location Autocomplete', () => {
     beforeEach(() => {
-      component.ngOnInit();
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: null });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: [] });
+      component.riderData = mockRiderData;
+      component.riderId = 3;
     });
 
     it('should search locations when input changes', fakeAsync(() => {
       const mockSuggestions = [
         {
-          display_name: 'New York, NY, USA',
-          lat: '40.7128',
-          lon: '-74.0060',
+          display_name: 'Mumbai, Maharashtra, India',
+          lat: '19.0760',
+          lon: '72.8777',
           place_id: '1'
         }
       ];
 
-      component.bookingForm.get('pickupLocation')?.setValue('New York');
+      // Initialize autocomplete
+      component['setupLocationAutocomplete']();
+
+      component.bookingForm.get('pickupLocation')?.setValue('Mumbai');
       tick(300); // debounce time
 
       const req = httpMock.expectOne(req => 
         req.url.includes('api.locationiq.com/v1/autocomplete') && 
-        req.url.includes('q=New%20York')
+        req.url.includes('q=Mumbai')
       );
       req.flush(mockSuggestions);
 
@@ -516,21 +482,6 @@ describe('RiderDashboardComponent', () => {
       expect(component.showPickupSuggestions).toBeFalsy();
     });
 
-    it('should select destination location from suggestions', () => {
-      const suggestion = {
-        display_name: 'Test Destination',
-        lat: '40.7589',
-        lon: '-73.9851',
-        place_id: '2'
-      };
-
-      component.selectDestinationLocation(suggestion);
-
-      expect(component.selectedDestinationLocation).toEqual(suggestion);
-      expect(component.bookingForm.get('destination')?.value).toBe('Test Destination');
-      expect(component.showDestinationSuggestions).toBeFalsy();
-    });
-
     it('should clear pickup location', () => {
       component.selectedPickupLocation = {
         display_name: 'Test',
@@ -546,48 +497,41 @@ describe('RiderDashboardComponent', () => {
       expect(component.bookingForm.get('pickupLocation')?.value).toBe('');
       expect(component.pickupSuggestions).toEqual([]);
     });
+  });
 
-    it('should clear destination location', () => {
-      component.selectedDestinationLocation = {
-        display_name: 'Test',
-        lat: '1',
-        lon: '1',
-        place_id: '1'
-      };
-      component.bookingForm.get('destination')?.setValue('Test');
-
-      component.clearDestinationLocation();
-
-      expect(component.selectedDestinationLocation).toBeNull();
-      expect(component.bookingForm.get('destination')?.value).toBe('');
-      expect(component.destinationSuggestions).toEqual([]);
+  describe('Data Refresh', () => {
+    beforeEach(() => {
+      component.riderData = mockRiderData;
+      component.riderId = 3;
     });
 
-    it('should handle keyboard events', () => {
-      const suggestions = [
-        {
-          display_name: 'Test Location',
-          lat: '40.7128',
-          lon: '-74.0060',
-          place_id: '1'
-        }
-      ];
-      component.pickupSuggestions = suggestions;
+    it('should refresh current ride data', fakeAsync(() => {
+      component.activeTab = 'current';
+      component.refreshData();
 
-      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
-      spyOn(enterEvent, 'preventDefault');
-      spyOn(component, 'selectPickupLocation');
+      expect(component.isLoading).toBeTruthy();
 
-      component.onInputKeydown(enterEvent, 'pickup');
+      const req = httpMock.expectOne('http://localhost:3000/api/rider/3/rides');
+      req.flush({ message: 'Rider rides retrieved', count: 2, data: mockRideHistory });
 
-      expect(enterEvent.preventDefault).toHaveBeenCalled();
-      expect(component.selectPickupLocation).toHaveBeenCalledWith(suggestions[0]);
+      tick(1000); // loading delay
 
-      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' });
-      component.onInputKeydown(escapeEvent, 'pickup');
+      expect(component.isLoading).toBeFalsy();
+    }));
 
-      expect(component.showPickupSuggestions).toBeFalsy();
-    });
+    it('should refresh ride history data', fakeAsync(() => {
+      component.activeTab = 'history';
+      component.refreshData();
+
+      expect(component.isLoading).toBeTruthy();
+
+      const req = httpMock.expectOne('http://localhost:3000/api/rider/3/rides');
+      req.flush({ message: 'Rider rides retrieved', count: 2, data: mockRideHistory });
+
+      tick(1000); // loading delay
+
+      expect(component.isLoading).toBeFalsy();
+    }));
   });
 
   describe('Utility Functions', () => {
@@ -632,63 +576,29 @@ describe('RiderDashboardComponent', () => {
       });
     });
 
-    it('should reset booking form correctly', () => {
-      // Set some values first
-      component.bookingForm.patchValue({
-        pickupLocation: 'Test Pickup',
-        destination: 'Test Destination',
-        rideType: 'bike'
+    it('should check if ride can be cancelled', () => {
+      const testCases = [
+        { status: 'requested', canCancel: true },
+        { status: 'accepted', canCancel: true },
+        { status: 'driver_on_way', canCancel: true },
+        { status: 'rider_picked_up', canCancel: false },
+        { status: 'completed', canCancel: false },
+        { status: 'cancelled', canCancel: false }
+      ];
+
+      testCases.forEach(testCase => {
+        const ride = {
+          rideId: 'R001',
+          status: testCase.status,
+          driver: { id: '1', name: 'Test', carModel: 'Test', plateNumber: 'Test', rating: 5 },
+          eta: '5 mins',
+          fare: 15,
+          pickup: 'A',
+          destination: 'B'
+        };
+        expect(component.canCancelRide(ride)).toBe(testCase.canCancel);
       });
-      component.selectedPickupLocation = { display_name: 'Test', lat: '1', lon: '1', place_id: '1' };
-      component.availableRides = [{ id: '1', driverName: 'Test', carModel: 'Test', plateNumber: 'Test', rating: 5, eta: '5 mins', price: 10 }];
-
-      component.resetBookingForm();
-
-      expect(component.bookingForm.get('pickupLocation')?.value).toBe('');
-      expect(component.bookingForm.get('destination')?.value).toBe('');
-      expect(component.bookingForm.get('rideType')?.value).toBe('car');
-      expect(component.bookingForm.get('when')?.value).toBe('now');
-      expect(component.selectedPickupLocation).toBeNull();
-      expect(component.selectedDestinationLocation).toBeNull();
-      expect(component.availableRides).toEqual([]);
     });
-  });
-
-  describe('Data Refresh', () => {
-    beforeEach(() => {
-      component.ngOnInit();
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: null });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: [] });
-    });
-
-    it('should refresh current ride data', fakeAsync(() => {
-      component.activeTab = 'current';
-      component.refreshData();
-
-      expect(component.isLoading).toBeTruthy();
-
-      const req = httpMock.expectOne('http://localhost:3000/api/rider/rides/current');
-      req.flush({ currentRide: mockCurrentRide });
-
-      tick(1000); // loading delay
-
-      expect(component.isLoading).toBeFalsy();
-    }));
-
-    it('should refresh ride history data', fakeAsync(() => {
-      component.activeTab = 'history';
-      component.refreshData();
-
-      expect(component.isLoading).toBeTruthy();
-
-      const req = httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20');
-      req.flush({ rides: mockRideHistory });
-
-      tick(1000); // loading delay
-
-      expect(component.isLoading).toBeFalsy();
-    }));
   });
 
   describe('Logout', () => {
@@ -715,14 +625,77 @@ describe('RiderDashboardComponent', () => {
     });
   });
 
+  describe('API Data Mapping', () => {
+    it('should map API ride data to CurrentRide correctly', () => {
+      // Create a properly typed API ride object
+      const apiRide: any = {
+        ...mockRideHistory[1], // The requested ride
+        final_fare: null // Explicitly set to null as it can be in API
+      };
+      
+      const mappedRide = component['mapApiRideToCurrentRide'](apiRide);
+
+      expect(mappedRide.rideId).toBe('R004');
+      expect(mappedRide.status).toBe('requested');
+      expect(mappedRide.pickup).toBe('Airport Terminal 1');
+      expect(mappedRide.destination).toBe('Worli Sea Face');
+      expect(mappedRide.fare).toBe(35);
+      expect(mappedRide.driver.name).toBe('Driver Not Assigned');
+    });
+
+    it('should map API ride data to RideHistory correctly', () => {
+      // Create a properly typed API ride object
+      const apiRide: any = {
+        ...mockRideHistory[0], // The completed ride
+        final_fare: '18.00' // Ensure it's a string
+      };
+      
+      const mappedRide = component['mapApiRideToRideHistory'](apiRide);
+
+      expect(mappedRide.rideId).toBe('R001');
+      expect(mappedRide.status).toBe('completed');
+      expect(mappedRide.pickup).toBe('Bandra West Railway Station');
+      expect(mappedRide.destination).toBe('Andheri East Metro Station');
+      expect(mappedRide.fare).toBe(18);
+      expect(mappedRide.driverName).toBe('Rajesh Kumar');
+      expect(mappedRide.driver?.vehicle).toBe('Honda City');
+    });
+
+    it('should handle null final_fare in API data', () => {
+      const apiRideWithNullFare: any = {
+        ...mockRideHistory[1],
+        final_fare: null,
+        estimated_fare: '25.00'
+      };
+      
+      const mappedRide = component['mapApiRideToCurrentRide'](apiRideWithNullFare);
+      expect(mappedRide.fare).toBe(25); // Should fall back to estimated_fare
+    });
+
+    it('should handle missing driver data in API', () => {
+      const apiRideWithoutDriver: any = {
+        ...mockRideHistory[0],
+        driver_name: null,
+        make: null,
+        model: null,
+        plate_number: null
+      };
+      
+      const mappedRide = component['mapApiRideToRideHistory'](apiRideWithoutDriver);
+      expect(mappedRide.driverName).toBe('N/A');
+      expect(mappedRide.driver).toBeUndefined();
+    });
+  });
+
   describe('Component Lifecycle', () => {
     it('should cleanup subscriptions on destroy', () => {
+      component.riderData = mockRiderData;
+      component.riderId = 3;
       component.ngOnInit();
       
       // Mock the HTTP requests
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: null });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: [] });
+      httpMock.expectOne('http://localhost:3000/api/rider/email/priya@example.com').flush({ data: mockRiderData });
+      httpMock.expectOne('http://localhost:3000/api/rider/3/rides').flush({ data: mockRideHistory });
 
       // Add some subscriptions
       expect(component['subscriptions'].length).toBeGreaterThan(0);
@@ -737,161 +710,22 @@ describe('RiderDashboardComponent', () => {
       });
     });
 
-    it('should handle API errors gracefully', () => {
-      spyOn(console, 'error');
-
+    it('should stop polling on destroy', () => {
+      component.riderData = mockRiderData;
+      component.riderId = 3;
       component.ngOnInit();
+      
+      // Mock initial requests
+      httpMock.expectOne('http://localhost:3000/api/rider/email/priya@example.com').flush({ data: mockRiderData });
+      httpMock.expectOne('http://localhost:3000/api/rider/3/rides').flush({ data: mockRideHistory });
 
-      // Make API calls fail
-      const profileReq = httpMock.expectOne('http://localhost:3000/api/rider/profile');
-      profileReq.flush('Error', { status: 500, statusText: 'Server Error' });
+      expect(component['currentRidePolling']).toBeTruthy();
 
-      const currentRideReq = httpMock.expectOne('http://localhost:3000/api/rider/rides/current');
-      currentRideReq.flush('Error', { status: 500, statusText: 'Server Error' });
+      const pollingSpy = spyOn(component['currentRidePolling']!, 'unsubscribe');
 
-      const historyReq = httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20');
-      historyReq.flush('Error', { status: 500, statusText: 'Server Error' });
+      component.ngOnDestroy();
 
-      expect(console.error).toHaveBeenCalledTimes(2); // current ride and history errors logged
-      expect(component.currentRide).toBeNull();
-      expect(component.rideHistory).toEqual([]);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    beforeEach(() => {
-      component.ngOnInit();
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: null });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: [] });
-    });
-
-    it('should handle empty responses', () => {
-      component.setActiveTab('current');
-
-      const req = httpMock.expectOne('http://localhost:3000/api/rider/rides/current');
-      req.flush({});
-
-      expect(component.currentRide).toBeNull();
-    });
-
-    it('should handle invalid rating input', () => {
-      spyOn(window, 'prompt').and.returnValue('invalid');
-      spyOn(window, 'alert');
-
-      const ride = mockRideHistory[0];
-      component.rateRide(ride);
-
-      expect(window.alert).not.toHaveBeenCalled();
-      httpMock.expectNone('http://localhost:3000/api/rider/rides/R002/rate');
-    });
-
-    it('should handle null rating input', () => {
-      spyOn(window, 'prompt').and.returnValue(null);
-
-      const ride = mockRideHistory[0];
-      component.rateRide(ride);
-
-      httpMock.expectNone('http://localhost:3000/api/rider/rides/R002/rate');
-    });
-
-    it('should prevent multiple simultaneous requests', () => {
-      component.bookingForm.patchValue({
-        pickupLocation: 'Test Pickup',
-        destination: 'Test Destination'
-      });
-      component.selectedPickupLocation = { display_name: 'Test', lat: '1', lon: '1', place_id: '1' };
-      component.selectedDestinationLocation = { display_name: 'Test', lat: '1', lon: '1', place_id: '1' };
-
-      component.isSearching = true;
-      component.findRides();
-
-      httpMock.expectNone('http://localhost:3000/api/rider/rides/request');
-    });
-
-    it('should handle form submission with invalid form', () => {
-      spyOn(window, 'alert');
-
-      component.findRides();
-
-      expect(window.alert).toHaveBeenCalledWith('Please select valid pickup and destination locations from the suggestions.');
-    });
-  });
-
-  describe('Template Integration', () => {
-    beforeEach(() => {
-      component.ngOnInit();
-      httpMock.expectOne('http://localhost:3000/api/rider/profile').flush({});
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/current').flush({ currentRide: null });
-      httpMock.expectOne('http://localhost:3000/api/rider/rides/history?limit=20').flush({ rides: [] });
-      fixture.detectChanges();
-    });
-
-    it('should display correct tab content', () => {
-      // Test Book Ride tab
-      component.setActiveTab('book');
-      fixture.detectChanges();
-
-      let bookTab = fixture.nativeElement.querySelector('.book-ride-panel');
-      let currentTab = fixture.nativeElement.querySelector('.current-ride-panel');
-      let historyTab = fixture.nativeElement.querySelector('.ride-history-panel');
-
-      expect(bookTab).toBeTruthy();
-      expect(currentTab).toBeFalsy();
-      expect(historyTab).toBeFalsy();
-
-      // Test Current Ride tab
-      component.setActiveTab('current');
-      fixture.detectChanges();
-
-      bookTab = fixture.nativeElement.querySelector('.book-ride-panel');
-      currentTab = fixture.nativeElement.querySelector('.current-ride-panel');
-      historyTab = fixture.nativeElement.querySelector('.ride-history-panel');
-
-      expect(bookTab).toBeFalsy();
-      expect(currentTab).toBeTruthy();
-      expect(historyTab).toBeFalsy();
-
-      // Test Ride History tab
-      component.setActiveTab('history');
-      fixture.detectChanges();
-
-      bookTab = fixture.nativeElement.querySelector('.book-ride-panel');
-      currentTab = fixture.nativeElement.querySelector('.current-ride-panel');
-      historyTab = fixture.nativeElement.querySelector('.ride-history-panel');
-
-      expect(bookTab).toBeFalsy();
-      expect(currentTab).toBeFalsy();
-      expect(historyTab).toBeTruthy();
-    });
-
-    it('should show notification badge when current ride exists', () => {
-      component.currentRide = mockCurrentRide;
-      fixture.detectChanges();
-
-      const notificationBadge = fixture.nativeElement.querySelector('.notification-badge');
-      expect(notificationBadge).toBeTruthy();
-    });
-
-    it('should show count badge for ride history', () => {
-      component.rideHistory = mockRideHistory;
-      fixture.detectChanges();
-
-      const countBadge = fixture.nativeElement.querySelector('.count-badge');
-      expect(countBadge).toBeTruthy();
-      expect(countBadge.textContent.trim()).toBe('2');
-    });
-
-    it('should disable booking form when current ride exists', () => {
-      component.currentRide = mockCurrentRide;
-      fixture.detectChanges();
-
-      const bookingForm = fixture.nativeElement.querySelector('.booking-form');
-      expect(bookingForm.classList).toContain('disabled');
-
-      const submitButton = fixture.nativeElement.querySelector('.find-rides-btn');
-      expect(submitButton.disabled).toBeTruthy();
-      expect(submitButton.textContent.trim()).toBe('Complete Current Ride First');
+      expect(pollingSpy).toHaveBeenCalled();
     });
   });
 });

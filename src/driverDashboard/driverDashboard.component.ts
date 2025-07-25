@@ -131,7 +131,7 @@ export class DriverDashboardComponent implements OnInit, OnDestroy {
     });
 
     this.subscriptions.push(driverSub);
-    alert("IN driverSUB");
+    //alert("IN driverSUB"); //for test
   }
 
   /**

@@ -216,7 +216,7 @@
                 </div>
               </div>
               <div class="ride-actions">
-                <span class="price">${{ ride.price }}</span>
+                <span class="price">₹{{ ride.price }}</span>
                 <button
                   class="book-now-btn"
                   (click)="bookRide(ride)"
@@ -275,19 +275,19 @@
                 </div>
 
                 <div class="ride-details">
-                  <div class="detail-row" *ngIf="currentRide.eta">
+                  <div class="detail-row" *ngIf="currentRide.eta && currentRide.eta !== 'N/A'">
                     <span class="label">ETA:</span>
                     <span class="value">{{ currentRide.eta }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="label">Fare:</span>
-                    <span class="value">${{ currentRide.fare }}</span>
+                    <span class="value">₹{{ currentRide.fare }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="label">Ride ID:</span>
                     <span class="value">{{ currentRide.rideId }}</span>
                   </div>
-                  <div class="detail-row" *ngIf="currentRide.otp">
+                  <div class="detail-row" *ngIf="currentRide.otp && currentRide.status !== 'requested'">
                     <span class="label">OTP:</span>
                     <span class="value otp">{{ currentRide.otp }}</span>
                   </div>
@@ -296,14 +296,14 @@
             </div>
 
             <!-- Driver Details -->
-            <div class="driver-details-section" *ngIf="currentRide.driver">
+            <div class="driver-details-section" *ngIf="currentRide.driver && currentRide.driver.name !== 'Driver Not Assigned'">
               <h3>Driver Details</h3>
               <div class="driver-card">
                 <div class="driver-info">
                   <h4>{{ currentRide.driver.name }}</h4>
                   <p class="vehicle-info">{{ currentRide.driver.carModel }}</p>
                   <p class="plate-info">{{ currentRide.driver.plateNumber }}</p>
-                  <div class="rating" *ngIf="currentRide.driver.rating">
+                  <div class="rating" *ngIf="currentRide.driver.rating > 0">
                     <span class="star">⭐</span>
                     <span>{{ currentRide.driver.rating }} rating</span>
                   </div>
@@ -318,6 +318,18 @@
                     Message
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <!-- Searching for Driver -->
+            <div class="driver-details-section" *ngIf="currentRide.driver && currentRide.driver.name === 'Driver Not Assigned'">
+              <h3>Finding Driver</h3>
+              <div class="searching-driver">
+                <div class="search-animation">
+                  <span class="spinner">⟳</span>
+                </div>
+                <p>Looking for available drivers nearby...</p>
+                <p class="search-note">This usually takes 1-3 minutes</p>
               </div>
             </div>
           </div>
@@ -385,7 +397,7 @@
               
               <div class="ride-meta">
                 <span class="date">{{ formatDate(ride.date) }}</span>
-                <span class="driver" *ngIf="ride.driverName">{{ ride.driverName }}</span>
+                <span class="driver" *ngIf="ride.driverName && ride.driverName !== 'N/A'">{{ ride.driverName }}</span>
                 <span class="vehicle" *ngIf="ride.driver">{{ ride.driver.vehicle }}</span>
               </div>
               
@@ -393,7 +405,7 @@
             </div>
             
             <div class="ride-summary">
-              <div class="price">${{ ride.fare }}</div>
+              <div class="price">₹{{ ride.fare }}</div>
               
               <div class="rating-section" *ngIf="ride.status === 'completed'">
                 <div class="rating" *ngIf="ride.rating; else noRating">
