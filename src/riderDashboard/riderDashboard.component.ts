@@ -228,13 +228,26 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
   /**
    * Get auth headers for API requests
    */
-  private getAuthHeaders(): HttpHeaders {
-    const token = localStorage.getItem('sessionToken') || localStorage.getItem('userToken');
-    return new HttpHeaders({
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    });
+  /**
+ * Get auth headers for API requests
+ */
+private getAuthHeaders(): HttpHeaders {
+  const token = localStorage.getItem('sessionToken') || localStorage.getItem('userToken');
+  
+  console.log('=== AUTH DEBUG ===');
+  console.log('Session token:', localStorage.getItem('sessionToken'));
+  console.log('User token:', localStorage.getItem('userToken'));
+  console.log('Using token:', token);
+  
+  if (!token) {
+    console.warn('No authentication token found!');
   }
+  
+  return new HttpHeaders({
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  });
+}
 
   /**
    * Load user profile from localStorage and API
@@ -653,77 +666,99 @@ export class RiderDashboardComponent implements OnInit, OnDestroy {
   /**
    * Request a ride - creates ride request in database
    */
-  findRides(): void {
-    if (!this.bookingForm.valid || this.isSearching) {
-      return;
-    }
+// src/riderDashboard/riderDashboard.component.ts - UPDATED findRides method
 
-    if (!this.selectedPickupLocation || !this.selectedDestinationLocation) {
-      alert('Please select valid pickup and destination locations from the suggestions.');
-      return;
-    }
-
-    if (!this.riderId) {
-      alert('User data not loaded. Please refresh the page.');
-      return;
-    }
-
-    this.isSearching = true;
-
-    const rideType = this.bookingForm.get('rideType')?.value;
-    const estimatedFare = this.calculateEstimatedFare(
-      this.selectedPickupLocation, 
-      this.selectedDestinationLocation, 
-      rideType
-    );
-
-    const rideRequestData: RideRequestData = {
-      pickup_location: this.selectedPickupLocation.display_name,
-      destination: this.selectedDestinationLocation.display_name,
-      ride_type: rideType,
-      estimated_fare: estimatedFare,
-      pickup_coordinates: {
-        lat: parseFloat(this.selectedPickupLocation.lat),
-        lng: parseFloat(this.selectedPickupLocation.lon)
-      },
-      destination_coordinates: {
-        lat: parseFloat(this.selectedDestinationLocation.lat),
-        lng: parseFloat(this.selectedDestinationLocation.lon)
-      }
-    };
-
-    const headers = this.getAuthHeaders();
-    const sub = this.http.post<ApiResponse<CurrentRideApiData>>(
-      `${this.API_URL}/rider/rides/request`,
-      rideRequestData,
-      { headers }
-    ).subscribe({
-      next: (response) => {
-        this.isSearching = false;
-        
-        if (response.success && response.data) {
-          alert('Ride requested successfully! Looking for available drivers...');
-          this.currentRide = this.mapApiCurrentRideToCurrentRide(response.data);
-          this.resetBookingForm();
-          this.setActiveTab('current');
-        } else {
-          alert(response.message || 'Failed to request ride. Please try again.');
-        }
-      },
-      error: (error) => {
-        this.isSearching = false;
-        console.error('Error requesting ride:', error);
-        
-        if (error.status === 400) {
-          alert('You already have an active ride. Please complete or cancel it first.');
-        } else {
-          alert('Failed to request ride. Please try again.');
-        }
-      }
-    });
-
-    this.subscriptions.push(sub);
+/**
+ * Request a ride - creates ride request in database
+ */
+findRides(): void {
+  if (!this.bookingForm.valid || this.isSearching) {
+    return;
   }
+
+  if (!this.selectedPickupLocation || !this.selectedDestinationLocation) {
+    alert('Please select valid pickup and destination locations from the suggestions.');
+    return;
+  }
+
+  if (!this.riderId) {
+    alert('User data not loaded. Please refresh the page.');
+    return;
+  }
+
+  this.isSearching = true;
+
+  const rideType = this.bookingForm.get('rideType')?.value;
+  const estimatedFare = this.calculateEstimatedFare(
+    this.selectedPickupLocation, 
+    this.selectedDestinationLocation, 
+    rideType
+  );
+
+  // IMPORTANT: Match the backend expected field names exactly
+  const rideRequestData = {
+    pickup_location: this.selectedPickupLocation.display_name,
+    destination: this.selectedDestinationLocation.display_name,
+    ride_type: rideType,
+    estimated_fare: estimatedFare,
+    pickup_coordinates: {
+      lat: parseFloat(this.selectedPickupLocation.lat),
+      lng: parseFloat(this.selectedPickupLocation.lon)
+    },
+    destination_coordinates: {
+      lat: parseFloat(this.selectedDestinationLocation.lat),
+      lng: parseFloat(this.selectedDestinationLocation.lon)
+    }
+  };
+
+  console.log('=== FRONTEND RIDE REQUEST DEBUG ===');
+  console.log('Sending ride request data:', rideRequestData);
+  console.log('Auth headers:', this.getAuthHeaders());
+
+  const headers = this.getAuthHeaders();
+  const sub = this.http.post<ApiResponse<CurrentRideApiData>>(
+    `${this.API_URL}/rider/rides/request`,
+    rideRequestData,
+    { headers }
+  ).subscribe({
+    next: (response) => {
+      console.log('=== RIDE REQUEST RESPONSE ===');
+      console.log('Response:', response);
+      
+      this.isSearching = false;
+      
+      if (response.success && response.data) {
+        alert('Ride requested successfully! Looking for available drivers...');
+        this.currentRide = this.mapApiCurrentRideToCurrentRide(response.data);
+        this.resetBookingForm();
+        this.setActiveTab('current');
+      } else {
+        console.error('Backend returned unsuccessful response:', response);
+        alert(response.message || 'Failed to request ride. Please try again.');
+      }
+    },
+    error: (error) => {
+      this.isSearching = false;
+      console.error('=== RIDE REQUEST ERROR ===');
+      console.error('Error details:', error);
+      console.error('Error status:', error.status);
+      console.error('Error message:', error.error?.message);
+      
+      if (error.status === 400) {
+        alert(error.error?.message || 'You already have an active ride. Please complete or cancel it first.');
+      } else if (error.status === 401) {
+        alert('Authentication failed. Please sign in again.');
+        this.router.navigate(['/sign-in']);
+      } else if (error.status === 404) {
+        alert('User profile not found. Please refresh and try again.');
+      } else {
+        alert(error.error?.message || 'Failed to request ride. Please try again.');
+      }
+    }
+  });
+
+  this.subscriptions.push(sub);
+}
 
   /**
    * Book a specific ride (if there are multiple options)
